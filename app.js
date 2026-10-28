@@ -626,28 +626,34 @@ function updateAuthUI() {
   }
 
   container.innerHTML = `
-    <div class="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
-      <!-- Active User Profile Card -->
-      <div class="flex items-center space-x-2 sm:space-x-2.5 bg-slate-900/90 border border-sky-900/60 py-1 sm:py-1.5 px-2.5 sm:px-3 rounded-xl shadow min-w-0 flex-1 sm:flex-initial">
+    <div class="flex items-center justify-between sm:justify-end gap-1.5 sm:gap-2 w-full sm:w-auto">
+      <!-- Active User Profile Card (Clickable to edit profile) -->
+      <button type="button" onclick="openEditProfileModal()" class="flex items-center space-x-2 sm:space-x-2.5 bg-slate-900/90 hover:bg-slate-800/90 border border-sky-900/60 hover:border-sky-500/50 py-1 sm:py-1.5 px-2.5 sm:px-3 rounded-xl shadow min-w-0 flex-1 sm:flex-initial transition cursor-pointer group text-left" title="Нажмите, чтобы изменить имя или пароль">
         <div class="w-8 h-8 rounded-lg overflow-hidden border border-sky-400/50 shadow flex-shrink-0 bg-slate-950 flex items-center justify-center">
           <img src="${currentUser.avatar || 'logo.jpg'}" alt="Аватар" class="w-full h-full object-cover">
         </div>
-        <div class="text-left leading-tight min-w-0 flex-1">
+        <div class="leading-tight min-w-0 flex-1">
           <div class="text-xs font-bold text-slate-100 flex items-center gap-1.5 truncate">
             <span class="truncate">${escapeHtml(currentUser.name)}</span>
             ${isAdmin ? '<span class="text-[9px] bg-amber-500 text-slate-950 font-black px-1.5 py-0.2 rounded flex-shrink-0">ADMIN</span>' : ''}
+            <i class="fa-solid fa-pen-to-square text-[10px] text-sky-400 opacity-60 group-hover:opacity-100 transition"></i>
           </div>
           <div class="text-[10px] text-slate-400 truncate">${escapeHtml(currentUser.badge || 'Штатный водитель')}</div>
         </div>
-      </div>
+      </button>
 
       <!-- Action Buttons -->
-      <div class="flex items-center space-x-1.5 flex-shrink-0">
+      <div class="flex items-center space-x-1 sm:space-x-1.5 flex-shrink-0">
+        <button type="button" onclick="openEditProfileModal()" class="px-2.5 py-1.5 rounded-lg bg-sky-950/70 hover:bg-sky-900 text-sky-300 text-xs font-medium border border-sky-800/60 transition flex items-center gap-1 cursor-pointer" title="Настройки профиля (сменить имя или пароль)">
+          <i class="fa-solid fa-gear text-xs"></i> <span class="hidden md:inline">Профиль</span>
+        </button>
+
         ${isAdmin ? `
           <button onclick="openAdminPanel()" class="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-black text-xs shadow-md border border-amber-300 flex items-center gap-1 transition cursor-pointer">
             <i class="fa-solid fa-crown text-xs"></i> <span>Админка</span>
           </button>
         ` : ''}
+
         <button onclick="handleLogout()" class="px-2.5 py-1.5 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-300 text-xs font-medium border border-rose-800/60 transition flex items-center gap-1 cursor-pointer" title="Выйти из аккаунта">
           <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i> <span>Выйти</span>
         </button>
@@ -805,6 +811,141 @@ function switchToRegisterModal() {
 function switchToLoginModal() {
   closeModal('modal-register');
   openModal('modal-login');
+}
+
+
+// ================= PROFILE EDIT & SECURITY =================
+function openEditProfileModal() {
+  if (!currentUser) {
+    showToast('Пожалуйста, войдите в свой аккаунт!', 'warning');
+    openModal('modal-login');
+    return;
+  }
+
+  const nameInput = document.getElementById('profile-new-name');
+  const badgeInput = document.getElementById('profile-new-badge');
+  const oldPass = document.getElementById('profile-old-password');
+  const newPass = document.getElementById('profile-new-password');
+  const confirmPass = document.getElementById('profile-confirm-password');
+
+  if (nameInput) nameInput.value = currentUser.name || '';
+  if (badgeInput) badgeInput.value = currentUser.badge || '';
+  if (oldPass) oldPass.value = '';
+  if (newPass) newPass.value = '';
+  if (confirmPass) confirmPass.value = '';
+
+  openModal('modal-edit-profile');
+}
+
+function handleProfileUpdate(e) {
+  if (e) e.preventDefault();
+  if (!currentUser) return;
+
+  const newName = document.getElementById('profile-new-name').value.trim();
+  const newBadge = document.getElementById('profile-new-badge').value.trim();
+  const oldPass = document.getElementById('profile-old-password').value;
+  const newPass = document.getElementById('profile-new-password').value;
+  const confirmPass = document.getElementById('profile-confirm-password').value;
+
+  // 1. Password Confirmation with old password
+  if (currentUser.password && currentUser.password !== oldPass) {
+    showToast('Неверный текущий (старый) пароль! Подтверждение отклонено.', 'error');
+    return;
+  }
+
+  // 2. Validate Name
+  if (!newName) {
+    showToast('Имя / позывной не может быть пустым!', 'warning');
+    return;
+  }
+
+  // Check duplicate name
+  if (newName.toLowerCase() !== currentUser.name.toLowerCase()) {
+    const duplicate = appUsers.find(u => u.id !== currentUser.id && u.name.toLowerCase() === newName.toLowerCase());
+    if (duplicate) {
+      showToast(`Пользователь с именем «${newName}» уже существует! Выберите другое имя.`, 'warning');
+      return;
+    }
+  }
+
+  // 3. Validate New Password if provided
+  if (newPass) {
+    if (newPass.length < 4) {
+      showToast('Новый пароль должен содержать минимум 4 символа!', 'warning');
+      return;
+    }
+    if (newPass !== confirmPass) {
+      showToast('Новые пароли не совпадают! Проверьте повтор пароля.', 'warning');
+      return;
+    }
+  }
+
+  const oldName = currentUser.name;
+
+  // 4. Update in appUsers
+  const userIdx = appUsers.findIndex(u => u.id === currentUser.id);
+  if (userIdx !== -1) {
+    appUsers[userIdx].name = newName;
+    if (newBadge) appUsers[userIdx].badge = newBadge;
+    if (newPass) appUsers[userIdx].password = newPass;
+  }
+
+  // Update currentUser
+  currentUser.name = newName;
+  if (newBadge) currentUser.badge = newBadge;
+  if (newPass) currentUser.password = newPass;
+
+  // 5. Sync references across all collections if name changed
+  if (oldName !== newName) {
+    // Reports
+    appReports.forEach(r => {
+      if (r.driverId === currentUser.id || r.driverName === oldName) {
+        r.driverName = newName;
+      }
+    });
+    saveReports();
+
+    // Leaves
+    appLeaves.forEach(l => {
+      if (l.driverId === currentUser.id || l.driverName === oldName) {
+        l.driverName = newName;
+      }
+    });
+    saveLeaves();
+
+    // Chat
+    appChatMessages.forEach(m => {
+      if (m.userId === currentUser.id || m.userName === oldName) {
+        m.userName = newName;
+      }
+    });
+    saveChatMessages();
+
+    // Fleet
+    appFleet.forEach(b => {
+      if (b.assignedDriverId === currentUser.id || b.assignedDriverName === oldName) {
+        b.assignedDriverName = newName;
+      }
+    });
+    saveFleet();
+  }
+
+  saveUsers();
+  saveCurrentUser();
+
+  // 6. Refresh UI
+  updateAuthUI();
+  renderReports();
+  renderLeaves();
+  renderChat();
+  updateOnlineRoster();
+  closeModal('modal-edit-profile');
+
+  if (newPass) {
+    showToast(`Имя и пароль успешно изменены! Добро пожаловать, ${newName}!`, 'success');
+  } else {
+    showToast(`Имя профиля успешно изменено на «${newName}»!`, 'success');
+  }
 }
 
 // ================= REPORTS SECTION =================
