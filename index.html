@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ОАО «Коренёвский ПАТП» — Форум предприятия OMSI 2</title>
+  <!-- Favicon -->
+  <link rel="icon" type="image/jpeg" href="logo.jpg">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="text-slate-100 flex flex-col min-h-screen">
+
+  <!-- TOP HEADER / BRANDING -->
+  <header class="border-b border-sky-900/50 bg-[#091124]/90 backdrop-blur sticky top-0 z-40 shadow-xl">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between min-h-[5.5rem] py-2">
+        
+        <!-- Logo & Title -->
+        <div class="flex items-center space-x-3.5 sm:space-x-4">
+          <div class="flex flex-col items-center flex-shrink-0">
+            <div class="relative w-14 h-14 rounded-2xl overflow-hidden shadow-lg shadow-sky-500/25 border-2 border-sky-400/50 bg-slate-900 group">
+              <img src="logo.jpg" alt="ОАО Коренёвский ПАТП" class="w-full h-full object-cover">
+              <div class="absolute inset-0 ring-1 ring-inset ring-white/20 rounded-2xl"></div>
+            </div>
+            <!-- СЧЕТЧИК ОНЛАЙНА СВЕРХУ СЛЕВА ПОД АВАТАРКОЙ -->
+            <button onclick="openOnlineModal()" id="online-counter-btn" class="mt-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-950/90 border border-emerald-500/50 text-[10px] font-bold text-emerald-300 shadow-md hover:bg-emerald-900 hover:border-emerald-400 transition cursor-pointer" title="Нажмите, чтобы увидеть, кто сейчас в сети">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 live-dot"></span>
+              <span>Онлайн: <b id="online-count-num" class="text-white font-mono">5</b></span>
+            </button>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-wider">OMSI 2 Enterprise</span>
+              <span class="flex items-center text-xs text-sky-400/80 font-mono">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 mr-1.5 live-dot"></span>
+                Диспетчерская на связи
+              </span>
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-black tracking-tight bg-gradient-to-r from-white via-sky-100 to-sky-300 bg-clip-text text-transparent leading-none mt-0.5">
+              ОАО «Коренёвский ПАТП»
+            </h1>
+            <div class="text-[11px] text-sky-300/80 font-medium tracking-wide mt-1 hidden sm:block">
+              «для тех, кто ценит качество и комфорт»
+            </div>
+          </div>
+        </div>
+
+        <!-- Dispatch Clock & User Account Panel -->
+        <div class="flex items-center space-x-3 sm:space-x-5">
+          <!-- Digital Clock -->
+          <div class="hidden md:flex flex-col text-right pr-3 border-r border-sky-900/60 font-mono text-xs">
+            <span class="text-slate-400">Время депо (МСК):</span>
+            <span id="depot-clock" class="text-sky-300 font-bold text-sm tracking-widest">12:00:00</span>
+          </div>
+
+          <!-- Active User Info or Auth Buttons -->
+          <div id="auth-nav-container" class="flex items-center space-x-3">
+            <!-- Injected via JavaScript based on login state -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Enterprise Sub-bar -->
+      <div class="py-2 border-t border-sky-950/80 flex flex-wrap items-center justify-between text-xs text-slate-300 gap-2">
+        <div class="flex items-center gap-2">
+          <span class="text-slate-400 font-medium flex items-center gap-1">
+            <i class="fa-solid fa-id-badge text-sky-400"></i> Текущий статус:
+          </span>
+          <span id="current-role-badge" class="px-2.5 py-0.5 rounded-full font-semibold border text-xs">
+            Загрузка...
+          </span>
+        </div>
+        <div class="flex items-center gap-3 text-slate-400 text-[11px]">
+          <span><i class="fa-solid fa-location-dot text-sky-400 mr-1"></i>Центральное депо ПАТП</span>
+          <span><i class="fa-solid fa-clock text-amber-400 mr-1"></i>Смены: Круглосуточно</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- DISPATCH ANNOUNCEMENT TICKER -->
+  <div class="bg-gradient-to-r from-blue-950/80 via-sky-950/90 to-blue-950/80 border-b border-sky-800/30 py-2 px-4 text-xs">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      <div class="flex items-center gap-2 overflow-hidden">
+        <span class="px-2 py-0.5 bg-sky-500/20 text-sky-300 rounded font-bold border border-sky-500/40 shrink-0">
+          <i class="fa-solid fa-bullhorn mr-1"></i> СВОДКА ПАТП
+        </span>
+        <span id="ticker-text" class="truncate text-slate-300">
+          Уважаемые водители! На 104-м пригородном маршруте в районе с. Коренёво открыт отремонтированный объезд. Все путевые листы и отчёты о сменах сдавать строго через раздел «Отчеты».
+        </span>
+      </div>
+      <div class="hidden lg:flex items-center gap-4 text-slate-400 shrink-0 font-mono text-[11px]">
+        <span id="ticker-release"><i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i>Выпуск на линию: 100%</span>
+        <span id="ticker-fuel"><i class="fa-solid fa-gas-pump text-amber-400 mr-1"></i>Топливо: В норме</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN WRAPPER -->
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- FORUM NAVIGATION TABS (Отчеты, Отгул, Наши маршруты, Общий чат) -->
+    <div class="flex border-b border-sky-900/60 space-x-1 sm:space-x-2 mb-6 bg-slate-900/40 p-1.5 rounded-xl border border-sky-900/40 overflow-x-auto">
+      <button id="tab-btn-reports" onclick="switchTab('reports')" class="flex-1 py-3 px-2 sm:px-4 rounded-lg font-semibold text-xs sm:text-base flex items-center justify-center gap-1.5 sm:gap-2 transition duration-200 bg-sky-600/30 text-sky-200 border border-sky-500/30 shadow-inner whitespace-nowrap">
+        <i class="fa-solid fa-clipboard-check text-sky-400"></i>
+        <span>Отчеты</span>
+        <span id="badge-pending-reports-count" class="hidden ml-1 px-1.5 py-0.2 rounded-full text-xs bg-amber-500/30 text-amber-300 border border-amber-500/40">0</span>
+      </button>
+
+      <button id="tab-btn-leaves" onclick="switchTab('leaves')" class="flex-1 py-3 px-2 sm:px-4 rounded-lg font-semibold text-xs sm:text-base flex items-center justify-center gap-1.5 sm:gap-2 transition duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 whitespace-nowrap">
+        <i class="fa-solid fa-calendar-minus text-purple-400"></i>
+        <span>Отгул</span>
+        <span id="badge-pending-leaves-count" class="hidden ml-1 px-1.5 py-0.2 rounded-full text-xs bg-purple-500/30 text-purple-300 border border-purple-500/40">0</span>
+      </button>
+
+      <button id="tab-btn-routes" onclick="switchTab('routes')" class="flex-1 py-3 px-2 sm:px-4 rounded-lg font-semibold text-xs sm:text-base flex items-center justify-center gap-1.5 sm:gap-2 transition duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 whitespace-nowrap">
+        <i class="fa-solid fa-route text-amber-400"></i>
+        <span>Наши маршруты</span>
+      </button>
+
+      <button id="tab-btn-chat" onclick="switchTab('chat')" class="flex-1 py-3 px-2 sm:px-4 rounded-lg font-semibold text-xs sm:text-base flex items-center justify-center gap-1.5 sm:gap-2 transition duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 whitespace-nowrap">
+        <i class="fa-solid fa-comments text-emerald-400"></i>
+        <span>Общий чат</span>
+        <span id="badge-chat-count" class="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-500/30 text-emerald-300 font-mono border border-emerald-500/40">4</span>
+      </button>
+    </div>
+
+    <!-- TAB 1: ОТЧЕТЫ (REPORTS) -->
+    <section id="section-reports" class="tab-content space-y-6">
+      
+      <!-- Top banner & Controls -->
+      <div class="patp-card rounded-2xl p-5 border border-sky-900/60 bg-gradient-to-br from-[#0c1938] to-[#091226]">
+        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-file-invoice text-sky-400"></i>
+              Сдача и проверка отчетов за смену (OMSI 2)
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-300 mt-1">
+              Водители сдают путевые листы после завершения рейсов. Диспетчерский состав и руководство проверяют выручку, рейсы и скриншоты.
+            </p>
+          </div>
+          <button onclick="openSubmitReportModal()" class="w-full md:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-semibold shadow-lg shadow-sky-600/30 transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-plus-circle"></i>
+            <span>Сдать отчет о смене</span>
+          </button>
+        </div>
+
+        <!-- Filter bar & Stats -->
+        <div class="mt-5 pt-4 border-t border-sky-900/50 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-slate-400">Фильтр:</span>
+            <button onclick="filterReports('all')" id="rep-filter-all" class="px-3 py-1 rounded-lg bg-sky-600 text-white font-medium">Все (<span id="count-all-rep">0</span>)</button>
+            <button onclick="filterReports('pending')" id="rep-filter-pending" class="px-3 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white">На рассмотрении (<span id="count-pending-rep">0</span>)</button>
+            <button onclick="filterReports('approved')" id="rep-filter-approved" class="px-3 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white">Одобрено (<span id="count-approved-rep">0</span>)</button>
+            <button onclick="filterReports('rejected')" id="rep-filter-rejected" class="px-3 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white">Отклонено (<span id="count-rejected-rep">0</span>)</button>
+            <button onclick="filterReports('my')" id="rep-filter-my" class="px-3 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white">Мои отчеты</button>
+          </div>
+
+          <div class="flex items-center gap-4 text-slate-300 font-mono text-[11px] bg-slate-900/60 px-3 py-1.5 rounded-lg border border-sky-900/40">
+            <span>Касса предприятия: <strong id="total-revenue-stat" class="text-emerald-400">0 ₽</strong></span>
+            <span>Рейсов сдано: <strong id="total-trips-stat" class="text-sky-300">0</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reports List Container -->
+      <div id="reports-list-container" class="space-y-4">
+        <!-- Rendered via JS -->
+      </div>
+    </section>
+
+    <!-- TAB 2: ОТГУЛ (LEAVE REQUESTS) -->
+    <section id="section-leaves" class="tab-content hidden space-y-6">
+      
+      <!-- Top banner & Controls -->
+      <div class="patp-card rounded-2xl p-5 border border-sky-900/60 bg-gradient-to-br from-[#121236] to-[#090b21]">
+        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-mug-hot text-purple-400"></i>
+              Заявления на отгул и отпуск
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-300 mt-1">
+              Если у водителя дела в реальной жизни, поломка игрового руля, ПК или сессия — подайте заявление на освобождение от смен.
+            </p>
+          </div>
+          <button onclick="openLeaveRequestModal()" class="w-full md:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold shadow-lg shadow-purple-600/30 transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-pen-to-square"></i>
+            <span>Подать заявление на отгул</span>
+          </button>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="mt-5 pt-4 border-t border-purple-900/40 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-slate-400">Статус:</span>
+            <button onclick="filterLeaves('all')" id="leave-filter-all" class="px-3 py-1 rounded-lg bg-purple-600 text-white font-medium">Все заявки (<span id="count-all-leaves">0</span>)</button>
+            <button onclick="filterLeaves('pending')" id="leave-filter-pending" class="px-3 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white">На рассмотрении (<span id="count-pending-leaves">0</span>)</button>
+            <button onclick="filterLeaves('approved')" id="leave-filter-approved" class="px-3 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white">Согласовано (<span id="count-approved-leaves">0</span>)</button>
+            <button onclick="filterLeaves('rejected')" id="leave-filter-rejected" class="px-3 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white">Отказано (<span id="count-rejected-leaves">0</span>)</button>
+          </div>
+          <div class="text-[11px] text-purple-300">
+            <i class="fa-solid fa-user-shield mr-1"></i> Согласуется Зам. по личному составу и Руководителем
+          </div>
+        </div>
+      </div>
+
+      <!-- Leave Requests List Container -->
+      <div id="leaves-list-container" class="space-y-4">
+        <!-- Rendered via JS -->
+      </div>
+    </section>
+
+    <!-- TAB 3: НАШИ МАРШРУТЫ (ROUTES) -->
+    <section id="section-routes" class="tab-content hidden space-y-6">
+      
+      <!-- Top banner -->
+      <div class="patp-card rounded-2xl p-5 border border-sky-900/60 bg-gradient-to-br from-[#0c1e33] to-[#081224]">
+        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-map-location-dot text-amber-400"></i>
+              Маршрутная сеть ОАО «Коренёвский ПАТП»
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-300 mt-1">
+              Официальные городские, пригородные и специальные рейсы предприятия для симулятора OMSI 2. Изучите расписание и трассу перед выездом на линию.
+            </p>
+          </div>
+          <div class="flex items-center gap-2 text-xs font-mono bg-amber-500/10 text-amber-300 px-3 py-2 rounded-xl border border-amber-500/20">
+            <i class="fa-solid fa-file-code text-base"></i>
+            <span>HOF-файл: <strong>KORENEVO_PATP_v2.hof</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Routes Grid -->
+      <div id="routes-grid-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Rendered via JS -->
+      </div>
+    </section>
+
+    <!-- TAB 4: ОБЩИЙ ЧАТ ПРЕДПРИЯТИЯ (РАЦИЯ) -->
+    <section id="section-chat" class="tab-content hidden space-y-6">
+      
+      <!-- Top banner & Controls -->
+      <div class="patp-card rounded-2xl p-5 border border-sky-900/60 bg-gradient-to-br from-[#0c1e33] to-[#081224]">
+        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div class="flex items-start space-x-3.5">
+            <div class="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-2xl flex-shrink-0 shadow-lg shadow-emerald-500/10">
+              <i class="fa-solid fa-tower-broadcast animate-pulse"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="text-xl sm:text-2xl font-bold text-white tracking-wide">Общий чат предприятия</h2>
+                <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[11px] font-semibold flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 live-dot"></span> В эфире
+                </span>
+              </div>
+              <p class="text-xs sm:text-sm text-slate-300 mt-1">
+                Оперативный радиоканал и живой чат для водительского состава, диспетчеров и руководства ОАО «Коренёвский ПАТП».
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2.5 self-start md:self-center">
+            <button onclick="openOnlineModal()" class="text-xs text-slate-300 font-mono bg-slate-900/90 hover:bg-slate-800 px-3 py-1.5 rounded-xl border border-sky-900/60 flex items-center gap-2 transition cursor-pointer" title="Посмотреть список сотрудников онлайн">
+              <i class="fa-solid fa-users text-emerald-400"></i> Онлайн: <b id="chat-online-count" class="text-white">5</b>
+            </button>
+            <button onclick="clearChatConfirm()" id="admin-clear-chat-btn" class="hidden px-3 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900 text-rose-300 text-xs border border-rose-800/60 transition flex items-center gap-1.5 cursor-pointer" title="Очистить историю радиоканала (доступно руководителю)">
+              <i class="fa-solid fa-broom"></i> <span class="hidden sm:inline">Очистить чат</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat Main Box -->
+      <div class="patp-card rounded-2xl border border-sky-900/60 bg-slate-950/80 overflow-hidden flex flex-col h-[650px] shadow-2xl">
+        
+        <!-- Chat Header Bar -->
+        <div class="px-5 py-3.5 bg-slate-900/95 border-b border-sky-900/60 flex items-center justify-between">
+          <div class="flex items-center space-x-2 text-xs font-semibold text-slate-300">
+            <i class="fa-solid fa-walkie-talkie text-sky-400"></i>
+            <span>Канал 1: Главная диспетчерская частота (Коренёво 144.200 МГц)</span>
+          </div>
+          <span class="text-[11px] text-slate-400 font-mono flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 live-dot"></span>
+            Радиоэфир активен
+          </span>
+        </div>
+
+        <!-- Chat Messages Container -->
+        <div id="chat-messages-container" class="flex-grow p-4 sm:p-5 overflow-y-auto space-y-3.5">
+          <!-- Injected via JavaScript -->
+        </div>
+
+        <!-- Chat Input Footer -->
+        <div id="chat-input-container" class="p-4 bg-slate-900/95 border-t border-sky-900/60">
+          <!-- Injected based on user login status -->
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- FLOATING QUICK CHAT BUTTON -->
+  <button onclick="switchTab('chat')" id="floating-chat-btn" class="fixed bottom-6 right-6 z-30 px-4 py-3 rounded-full bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold shadow-2xl shadow-emerald-700/50 border border-emerald-400/50 flex items-center gap-2.5 transition transform hover:scale-105 group cursor-pointer" title="Открыть общий чат предприятия">
+    <span class="relative flex h-3 w-3">
+      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+      <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+    </span>
+    <i class="fa-solid fa-comments text-base"></i>
+    <span class="text-xs sm:text-sm font-semibold">Общий чат</span>
+    <span id="floating-chat-count" class="px-2 py-0.5 rounded-full text-xs bg-slate-950/80 text-emerald-300 font-mono border border-emerald-400/40">4</span>
+  </button>
+
+  <!-- FOOTER -->
+  <footer class="mt-auto border-t border-sky-950 bg-[#060b18] py-8 text-xs text-slate-400">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+        
+        <div>
+          <div class="flex items-center space-x-2 text-white font-bold text-base mb-1">
+            <img src="logo.jpg" alt="Логотип" class="w-7 h-7 rounded-lg object-cover border border-sky-400/40">
+            <span>ОАО «Коренёвский ПАТП»</span>
+          </div>
+          <p class="text-slate-400 text-xs">
+            Виртуальное пассажирское автотранспортное предприятие в OMSI 2. «Для тех, кто ценит качество и комфорт». Регулярные рейсы, строгая дисциплина и дружный коллектив.
+          </p>
+        </div>
+
+        <div class="text-center md:text-left space-y-1">
+          <div class="font-semibold text-slate-200">Иерархия предприятия:</div>
+          <div class="flex flex-wrap justify-center md:justify-start gap-1.5 text-[11px]">
+            <span class="badge-role-director px-2 py-0.5 rounded">Руководитель</span>
+            <span class="badge-role-hr px-2 py-0.5 rounded">Зам. по кадрам</span>
+            <span class="badge-role-dispatch px-2 py-0.5 rounded">Зам. по диспетчерской</span>
+            <span class="badge-role-driver px-2 py-0.5 rounded">Водитель</span>
+          </div>
+        </div>
+
+        <div class="text-center md:text-right space-y-2">
+          <button onclick="openHostingGuideModal()" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-950 hover:bg-sky-900 border border-sky-800/60 text-sky-300 font-medium transition text-xs">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <span>Как бесплатно опубликовать сайт?</span>
+          </button>
+          <div class="text-[11px] text-slate-500">
+            ОАО «Коренёвский ПАТП» © 2026. Разработано для сообщества OMSI 2.
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- MODAL: LOGIN -->
+  <div id="modal-login" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="patp-card w-full max-w-md rounded-2xl p-6 border border-sky-700/50 shadow-2xl relative animate-in fade-in duration-200">
+      <button onclick="closeModal('modal-login')" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="text-center mb-6">
+        <div class="w-12 h-12 rounded-xl bg-blue-600/30 text-sky-400 border border-sky-500/30 flex items-center justify-center mx-auto mb-3">
+          <i class="fa-solid fa-right-to-bracket text-xl"></i>
+        </div>
+        <h3 class="text-xl font-bold text-white">Вход в систему ПАТП</h3>
+        <p class="text-xs text-slate-400 mt-1">Введите ваши учетные данные водителя или руководства</p>
+      </div>
+
+      <form id="form-login" onsubmit="handleLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">ФИО / Позывной или Логин</label>
+          <input type="text" id="login-username" required class="w-full patp-input px-3.5 py-2.5 rounded-xl text-sm" placeholder="Введите ваш логин или ФИО">
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Пароль</label>
+          <input type="password" id="login-password" required class="w-full patp-input px-3.5 py-2.5 rounded-xl text-sm" placeholder="••••••••">
+        </div>
+
+        <button type="submit" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 font-semibold text-white text-sm shadow-lg shadow-sky-600/30 transition">
+          Войти в свой аккаунт
+        </button>
+      </form>
+
+      <div class="mt-5 pt-4 border-t border-sky-900/40 text-center text-xs text-slate-400">
+        Впервые в предприятии? 
+        <button type="button" onclick="switchToRegisterModal()" class="text-sky-300 hover:text-white font-semibold underline underline-offset-2 ml-1">
+          Создать свой аккаунт водителя
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: REGISTER -->
+  <div id="modal-register" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="patp-card w-full max-w-lg rounded-2xl p-6 border border-sky-700/50 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+      <button onclick="closeModal('modal-register')" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="text-center mb-5">
+        <div class="w-12 h-12 rounded-xl bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto mb-3">
+          <i class="fa-solid fa-user-plus text-xl"></i>
+        </div>
+        <h3 class="text-xl font-bold text-white">Регистрация нового водителя</h3>
+        <p class="text-xs text-slate-400 mt-1">Создайте свой персональный профиль в ОАО «Коренёвский ПАТП»</p>
+      </div>
+
+      <form id="form-register" onsubmit="handleRegister(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Ваше ФИО / Позывной в OMSI 2 *</label>
+          <input type="text" id="reg-fullname" required class="w-full patp-input px-3.5 py-2.5 rounded-xl text-sm" placeholder="Например: Соколов Дмитрий Сергеевич">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Табельный / Бортовой номер</label>
+            <input type="text" id="reg-badge" class="w-full patp-input px-3.5 py-2.5 rounded-xl text-sm" placeholder="№ 142">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Основной автобус в OMSI 2</label>
+            <select id="reg-bus" class="w-full patp-input px-3 py-2.5 rounded-xl text-sm">
+              <option value="ЛиАЗ-5256.26">ЛиАЗ-5256.26</option>
+              <option value="ЛиАЗ-5292.22">ЛиАЗ-5292.22 / 5292.65</option>
+              <option value="ПАЗ-32053">ПАЗ-32053 / 32054</option>
+              <option value="ПАЗ «Вектор Next»">ПАЗ «Вектор Next»</option>
+              <option value="НефАЗ-5299-40">НефАЗ-5299-40-52</option>
+              <option value="МАЗ-103">МАЗ-103 / МАЗ-206</option>
+              <option value="Икарус-260">Икарус-260 / Икарус-280</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Придумайте пароль для входа *</label>
+          <input type="password" id="reg-password" required class="w-full patp-input px-3.5 py-2.5 rounded-xl text-sm" placeholder="••••••••">
+        </div>
+
+        <button type="submit" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-semibold text-white text-sm shadow-lg shadow-emerald-600/30 transition">
+          Зарегистрировать мой аккаунт
+        </button>
+      </form>
+
+      <div class="mt-5 pt-4 border-t border-sky-900/40 text-center text-xs text-slate-400">
+        Уже зарегистрированы? 
+        <button type="button" onclick="switchToLoginModal()" class="text-emerald-300 hover:text-white font-semibold underline underline-offset-2 ml-1">
+          Войти в существующий профиль
+        </button>
+      </div>
+    </div>
+  </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SUBMIT SHIFT REPORT -->
+  <div id="modal-submit-report" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="patp-card w-full max-w-2xl rounded-2xl p-6 border border-sky-700/50 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+      <button onclick="closeModal('modal-submit-report')" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="text-center mb-5">
+        <div class="w-12 h-12 rounded-xl bg-sky-600/30 text-sky-400 border border-sky-500/30 flex items-center justify-center mx-auto mb-2">
+          <i class="fa-solid fa-file-circle-check text-xl"></i>
+        </div>
+        <h3 class="text-xl font-bold text-white">Сдача отчета за смену</h3>
+        <p class="text-xs text-slate-400">Заполните путевую информацию по завершению смены в OMSI 2</p>
+      </div>
+
+      <form id="form-submit-report" onsubmit="handleSubmitReport(event)" class="space-y-4">
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Маршрут *</label>
+            <select id="rep-route" required class="w-full patp-input px-3 py-2.5 rounded-xl text-sm">
+              <option value="№ 1 «Автовокзал — Мкрн. Северный»">№ 1 «Автовокзал — Мкрн. Северный»</option>
+              <option value="№ 104 «ПАТП — с. Коренёво — д. Заречье»">№ 104 «ПАТП — с. Коренёво — д. Заречье»</option>
+              <option value="№ 23 «Кольцевой: Рынок — Ж/Д Вокзал»">№ 23 «Кольцевой: Рынок — Ж/Д Вокзал»</option>
+              <option value="№ 55э «Аэропорт Коренёво — Центр»">№ 55э «Аэропорт Коренёво — Центр»</option>
+              <option value="№ 7 «Ночной дежурный»">№ 7 «Ночной дежурный»</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Модель и Гос/Бортовой номер автобуса *</label>
+            <input type="text" id="rep-bus-info" required class="w-full patp-input px-3.5 py-2.5 rounded-xl text-sm" placeholder="ЛиАЗ-5256.26 (Борт №104, а145кх)">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Кругорейсов выполнено *</label>
+            <input type="number" min="1" max="20" id="rep-trips" required class="w-full patp-input px-3 py-2.5 rounded-xl text-sm" placeholder="4">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Выручка с билетов (₽) *</label>
+            <input type="number" min="0" id="rep-revenue" required class="w-full patp-input px-3 py-2.5 rounded-xl text-sm" placeholder="3850">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Пассажиров перевезено</label>
+            <input type="number" min="0" id="rep-passengers" class="w-full patp-input px-3 py-2.5 rounded-xl text-sm" placeholder="140">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Соблюдение графика</label>
+            <select id="rep-schedule" class="w-full patp-input px-3 py-2.5 rounded-xl text-sm">
+              <option value="Строго по расписанию (0 мин)">Строго по расписанию (0 мин)</option>
+              <option value="Незначительное опоздание (+2..4 мин)">Незначительное опоздание (+2..4 мин)</option>
+              <option value="Опоздание из-за трафика (+5..10 мин)">Опоздание из-за трафика (+5..10 мин)</option>
+              <option value="Сход с линии / ДТП">Сход с линии / ДТП</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Ссылка на скриншоты (Яндекс.Диск, Imgur, VK) *</label>
+            <input type="text" id="rep-screenshots" required class="w-full patp-input px-3.5 py-2.5 rounded-xl text-sm" placeholder="https://imgur.com/... или описание скриншотов">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Комментарий водителя / Замечания по ПС и дороге</label>
+          <textarea id="rep-comment" rows="3" class="w-full patp-input px-3.5 py-2 rounded-xl text-sm" placeholder="Поломка отопителя, состояние дорожного полотна, работа кассы..."></textarea>
+        </div>
+
+        <button type="submit" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 font-semibold text-white text-sm shadow-lg shadow-sky-600/30 transition">
+          Отправить отчет в диспетчерскую службу
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: LEAVE REQUEST -->
+  <div id="modal-submit-leave" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="patp-card w-full max-w-lg rounded-2xl p-6 border border-purple-700/50 shadow-2xl relative">
+      <button onclick="closeModal('modal-submit-leave')" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="text-center mb-5">
+        <div class="w-12 h-12 rounded-xl bg-purple-600/30 text-purple-400 border border-purple-500/30 flex items-center justify-center mx-auto mb-2">
+          <i class="fa-solid fa-calendar-xmark text-xl"></i>
+        </div>
+        <h3 class="text-xl font-bold text-white">Заявление на отгул / отпуск</h3>
+        <p class="text-xs text-slate-400">Передается Зам.Руководителя по личному составу для внесения в табель</p>
+      </div>
+
+      <form id="form-submit-leave" onsubmit="handleSubmitLeave(event)" class="space-y-4">
+        
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Причина отсутствия на смене *</label>
+          <select id="leave-reason-type" required class="w-full patp-input px-3 py-2.5 rounded-xl text-sm">
+            <option value="Семейные обстоятельства">Семейные обстоятельства</option>
+            <option value="Ремонт игрового руля / ПК">Техническое обслуживание ПК / игрового руля</option>
+            <option value="Учеба / Экзамены / Сессия">Учеба / Экзамены / Сессия</option>
+            <option value="Плановый отпуск">Плановый отпуск</option>
+            <option value="Состояние здоровья">Состояние здоровья / Больничный</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Дата начала *</label>
+            <input type="date" id="leave-date-start" required class="w-full patp-input px-3 py-2 rounded-xl text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Дата окончания *</label>
+            <input type="date" id="leave-date-end" required class="w-full patp-input px-3 py-2 rounded-xl text-sm">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Подробное пояснение *</label>
+          <textarea id="leave-comment" required rows="3" class="w-full patp-input px-3.5 py-2 rounded-xl text-sm" placeholder="Укажите подробности для отдела кадров (например: уезжаю за город до воскресенья)..."></textarea>
+        </div>
+
+        <button type="submit" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 font-semibold text-white text-sm shadow-lg shadow-purple-600/30 transition">
+          Передать заявление в отдел кадров
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: HOSTING GUIDE -->
+  <div id="modal-hosting-guide" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="patp-card w-full max-w-2xl rounded-2xl p-6 border border-sky-700/50 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+      <button onclick="closeModal('modal-hosting-guide')" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center">
+          <i class="fa-solid fa-server text-lg"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-white">Инструкция по бесплатному хостингу</h3>
+          <p class="text-xs text-slate-400">Как выложить этот сайт в интернет за 2 минуты без оплаты</p>
+        </div>
+      </div>
+
+      <div class="space-y-4 text-xs text-slate-300 leading-relaxed">
+        <div class="p-3.5 rounded-xl bg-sky-950/60 border border-sky-800/40">
+          <h4 class="font-bold text-sky-300 text-sm mb-1 flex items-center gap-1.5">
+            <span class="w-5 h-5 rounded-full bg-sky-500 text-slate-950 inline-flex items-center justify-center font-black text-xs">1</span>
+            Netlify Drop (Самый простой вариант, без установки программ)
+          </h4>
+          <ol class="list-decimal list-inside space-y-1 ml-1 text-slate-300">
+            <li>Откройте сайт <strong>app.netlify.com/drop</strong></li>
+            <li>Перетащите папку с файлами сайта (<code class="bg-slate-900 px-1 py-0.5 rounded text-sky-200">korenevskoe-patp</code>) в окно браузера.</li>
+            <li>Через 10 секунд сайт запустится и выдаст вам готовую бесплатную ссылку (вида <code class="bg-slate-900 px-1 py-0.5 rounded text-sky-200">patp-korenevo.netlify.app</code>) с бесплатным HTTPS!</li>
+          </ol>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-blue-950/60 border border-blue-800/40">
+          <h4 class="font-bold text-blue-300 text-sm mb-1 flex items-center gap-1.5">
+            <span class="w-5 h-5 rounded-full bg-blue-500 text-slate-950 inline-flex items-center justify-center font-black text-xs">2</span>
+            Vercel (Быстрый хостинг с поддержкой доменов)
+          </h4>
+          <ol class="list-decimal list-inside space-y-1 ml-1 text-slate-300">
+            <li>Зарегистрируйтесь бесплатно на <strong>vercel.com</strong> через GitHub или почту.</li>
+            <li>Импортируйте проект или выполните команду <code class="bg-slate-900 px-1 py-0.5 rounded text-sky-200">npx vercel</code> в папке.</li>
+            <li>Получите адрес <code class="bg-slate-900 px-1 py-0.5 rounded text-sky-200">*.vercel.app</code> с быстрой доставкой по всему миру.</li>
+          </ol>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-700/60">
+          <h4 class="font-bold text-emerald-300 text-sm mb-1 flex items-center gap-1.5">
+            <span class="w-5 h-5 rounded-full bg-emerald-500 text-slate-950 inline-flex items-center justify-center font-black text-xs">3</span>
+            GitHub Pages (100% бесплатно навсегда)
+          </h4>
+          <ol class="list-decimal list-inside space-y-1 ml-1 text-slate-300">
+            <li>Создайте репозиторий на github.com и загрузите туда файлы <code class="text-sky-200">index.html</code>, <code class="text-sky-200">style.css</code>, <code class="text-sky-200">app.js</code>.</li>
+            <li>Зайдите в <strong>Settings -> Pages</strong> репозитория.</li>
+            <li>Выберите ветку <strong>main / root</strong> и нажмите <strong>Save</strong>.</li>
+            <li>Ваш сайт станет доступен по адресу <code class="bg-slate-900 px-1 py-0.5 rounded text-sky-200">https://ваше-имя.github.io/репозиторий/</code>.</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="mt-5 text-right">
+        <button onclick="closeModal('modal-hosting-guide')" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs transition">
+          Понятно, закрыть
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADMIN PANEL (РУКОВОДИТЕЛЬ / ADMIN) -->
+  <div id="modal-admin-panel" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4">
+    <div class="patp-card w-full max-w-5xl rounded-2xl p-4 sm:p-6 border-2 border-amber-500/50 shadow-2xl relative max-h-[92vh] flex flex-col bg-slate-950/95 overflow-hidden">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between pb-4 border-b border-sky-900/60 flex-shrink-0">
+        <div class="flex items-center space-x-3">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center text-slate-950 font-black text-xl shadow-lg shadow-amber-500/30">
+            <i class="fa-solid fa-crown"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded text-[10px] font-black bg-amber-500 text-slate-950 uppercase tracking-wider">Панель управления</span>
+              <span class="text-xs text-amber-400 font-mono">Доступ: Главный администратор</span>
+            </div>
+            <h2 class="text-lg sm:text-2xl font-black text-white">Админ-панель ОАО «Коренёвский ПАТП»</h2>
+          </div>
+        </div>
+
+        <button onclick="closeModal('modal-admin-panel')" class="w-9 h-9 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-lg border border-sky-900/50 transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Navigation Tabs inside Admin Panel -->
+      <div class="flex border-b border-sky-900/50 space-x-2 my-4 flex-shrink-0 overflow-x-auto text-xs sm:text-sm">
+        <button id="admin-tab-btn-users" onclick="switchAdminTab('users')" class="py-2.5 px-4 rounded-xl font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-2 transition whitespace-nowrap">
+          <i class="fa-solid fa-users-gear"></i>
+          <span>Сотрудники и роли</span>
+          <span id="admin-users-count-badge" class="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500 text-slate-950 font-black">0</span>
+        </button>
+        <button id="admin-tab-btn-fleet" onclick="switchAdminTab('fleet')" class="py-2.5 px-4 rounded-xl font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-900 flex items-center gap-2 transition whitespace-nowrap">
+          <i class="fa-solid fa-bus"></i>
+          <span>Подвижной состав</span>
+          <span id="admin-fleet-count-badge" class="px-1.5 py-0.2 rounded-full text-[10px] bg-sky-500 text-slate-950 font-black">0</span>
+        </button>
+        <button id="admin-tab-btn-routes" onclick="switchAdminTab('routes')" class="py-2.5 px-4 rounded-xl font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-900 flex items-center gap-2 transition whitespace-nowrap">
+          <i class="fa-solid fa-map-location-dot"></i>
+          <span>Маршруты ПАТП</span>
+        </button>
+        <button id="admin-tab-btn-ticker" onclick="switchAdminTab('ticker')" class="py-2.5 px-4 rounded-xl font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-900 flex items-center gap-2 transition whitespace-nowrap">
+          <i class="fa-solid fa-bullhorn"></i>
+          <span>Сводка диспетчерской</span>
+        </button>
+        <button id="admin-tab-btn-backup" onclick="switchAdminTab('backup')" class="py-2.5 px-4 rounded-xl font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-900 flex items-center gap-2 transition whitespace-nowrap">
+          <i class="fa-solid fa-database"></i>
+          <span>Резервная копия (JSON)</span>
+        </button>
+      </div>
+
+      <!-- Body / Scrollable Content -->
+      <div class="flex-grow overflow-y-auto pr-1 space-y-4">
+
+        <!-- ADMIN TAB 1: USERS & ROLES -->
+        <div id="admin-subview-users" class="space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/80 p-3.5 rounded-xl border border-sky-900/60">
+            <div>
+              <h3 class="font-bold text-white text-sm sm:text-base flex items-center gap-2">
+                <i class="fa-solid fa-id-card-clip text-amber-400"></i>
+                Личный состав предприятия
+              </h3>
+              <p class="text-xs text-slate-400">Меняйте роли, табельные номера, статусы и привязку автобусов для каждого сотрудника.</p>
+            </div>
+            <button onclick="toggleAddUserForm()" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold text-xs transition flex items-center gap-1.5 self-start sm:self-auto shadow">
+              <i class="fa-solid fa-user-plus"></i> Добавить сотрудника
+            </button>
+          </div>
+
+          <!-- Add User Form (Collapsible) -->
+          <div id="admin-add-user-form" class="hidden p-4 rounded-xl bg-slate-900 border border-emerald-500/40 space-y-3">
+            <h4 class="font-bold text-emerald-300 text-xs">Прием нового водителя или руководителя в штат:</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+              <div>
+                <label class="block text-slate-400 mb-1">ФИО / Позывной *</label>
+                <input type="text" id="admin-new-name" placeholder="Петров Петр" class="w-full patp-input px-3 py-2 rounded-lg text-xs">
+              </div>
+              <div>
+                <label class="block text-slate-400 mb-1">Должность / Роль *</label>
+                <select id="admin-new-role" class="w-full patp-input px-3 py-2 rounded-lg text-xs">
+                  <option value="driver" selected>Водитель</option>
+                  <option value="dispatch">Зам.Руководителя по диспетчерскому составу</option>
+                  <option value="hr">Зам.Руководителя по личному составу</option>
+                  <option value="director">Руководитель</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-slate-400 mb-1">Табельный / Бортовой №</label>
+                <input type="text" id="admin-new-badge" placeholder="Борт №115" class="w-full patp-input px-3 py-2 rounded-lg text-xs">
+              </div>
+              <div>
+                <label class="block text-slate-400 mb-1">Пароль</label>
+                <input type="text" id="admin-new-password" placeholder="12345" class="w-full patp-input px-3 py-2 rounded-lg text-xs">
+              </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+              <button onclick="toggleAddUserForm()" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 text-xs">Отмена</button>
+              <button onclick="saveNewUserFromAdmin()" class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs">Сохранить сотрудника</button>
+            </div>
+          </div>
+
+          <!-- Users Table Container -->
+          <div class="overflow-x-auto rounded-xl border border-sky-900/60 bg-slate-900/50">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-950 text-slate-400 border-b border-sky-900/60 uppercase font-mono text-[10px]">
+                <tr>
+                  <th class="p-3">Сотрудник</th>
+                  <th class="p-3">Роль / Должность</th>
+                  <th class="p-3">Статус на смене</th>
+                  <th class="p-3">Табельный №</th>
+                  <th class="p-3">Автобус</th>
+                  <th class="p-3 text-right">Действия</th>
+                </tr>
+              </thead>
+              <tbody id="admin-users-table-body" class="divide-y divide-sky-950">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ADMIN TAB: FLEET MANAGEMENT (ПОДВИЖНОЙ СОСТАВ) -->
+        <div id="admin-subview-fleet" class="hidden space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/80 p-3.5 rounded-xl border border-sky-900/60">
+            <div>
+              <h3 class="font-bold text-white text-sm sm:text-base flex items-center gap-2">
+                <i class="fa-solid fa-bus text-sky-400"></i>
+                Управление подвижным составом и автопарком
+              </h3>
+              <p class="text-xs text-slate-400">Изменяйте названия автобусов, бортовые номера, статусы и перекрепляйте машины к конкретным водителям.</p>
+            </div>
+            <button onclick="toggleAddBusForm()" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-xs transition flex items-center gap-1.5 self-start sm:self-auto shadow">
+              <i class="fa-solid fa-plus"></i> Добавить автобус в парк
+            </button>
+          </div>
+
+          <!-- Add Bus Form (Collapsible) -->
+          <div id="admin-add-bus-form" class="hidden p-4 rounded-xl bg-slate-900 border border-sky-500/40 space-y-3">
+            <h4 class="font-bold text-sky-300 text-xs">Параметры нового автобуса:</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div>
+                <label class="block text-slate-400 mb-1">Модель автобуса *</label>
+                <input type="text" id="admin-bus-model" placeholder="ЛиАЗ-5256.26 / ПАЗ-3205" class="w-full patp-input px-3 py-2 rounded-lg text-xs">
+              </div>
+              <div>
+                <label class="block text-slate-400 mb-1">Бортовой номер *</label>
+                <input type="text" id="admin-bus-board" placeholder="Борт №105" class="w-full patp-input px-3 py-2 rounded-lg text-xs">
+              </div>
+              <div>
+                <label class="block text-slate-400 mb-1">Гос. номер</label>
+                <input type="text" id="admin-bus-plate" placeholder="а123вс 46" class="w-full patp-input px-3 py-2 rounded-lg text-xs">
+              </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div>
+                <label class="block text-slate-400 mb-1">Закрепить за водителем</label>
+                <select id="admin-bus-driver-select" class="w-full patp-input px-3 py-2 rounded-lg text-xs">
+                  <option value="">-- В резерве (Не закреплен) --</option>
+                  <!-- Injected via JS from appUsers -->
+                </select>
+              </div>
+              <div>
+                <label class="block text-slate-400 mb-1">Техническое состояние</label>
+                <select id="admin-bus-status" class="w-full patp-input px-3 py-2 rounded-lg text-xs">
+                  <option value="active">🟢 На линии / Исправен</option>
+                  <option value="reserve">🔵 В резерве парка</option>
+                  <option value="repair">🟡 На ТО / в ремзоне</option>
+                  <option value="decommissioned">🔴 Списан</option>
+                </select>
+              </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+              <button onclick="toggleAddBusForm()" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 text-xs">Отмена</button>
+              <button onclick="saveNewBusFromAdmin()" class="px-4 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs">Сохранить автобус</button>
+            </div>
+          </div>
+
+          <!-- Fleet Table Container -->
+          <div class="overflow-x-auto rounded-xl border border-sky-900/60 bg-slate-900/50">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-950 text-slate-400 border-b border-sky-900/60 uppercase font-mono text-[10px]">
+                <tr>
+                  <th class="p-3">Модель и Борт</th>
+                  <th class="p-3">Гос. номер</th>
+                  <th class="p-3">Технический статус</th>
+                  <th class="p-3">Закрепленный водитель (Перекрепление)</th>
+                  <th class="p-3 text-right">Действия</th>
+                </tr>
+              </thead>
+              <tbody id="admin-fleet-table-body" class="divide-y divide-sky-950">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ADMIN TAB 2: ROUTES MANAGEMENT -->
+        <div id="admin-subview-routes" class="hidden space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/80 p-3.5 rounded-xl border border-sky-900/60">
+            <div>
+              <h3 class="font-bold text-white text-sm sm:text-base flex items-center gap-2">
+                <i class="fa-solid fa-route text-amber-400"></i>
+                Управление маршрутной сетью
+              </h3>
+              <p class="text-xs text-slate-400">Добавляйте новые маршруты OMSI 2, меняйте расписания и трассы следования.</p>
+            </div>
+            <button onclick="toggleAddRouteForm()" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-slate-950 font-bold text-xs transition flex items-center gap-1.5 self-start sm:self-auto shadow">
+              <i class="fa-solid fa-plus"></i> Создать новый маршрут
+            </button>
+          </div>
+
+          <!-- Add Route Form (Collapsible) -->
+          <div id="admin-add-route-form" class="hidden p-4 rounded-xl bg-slate-900 border border-amber-500/40 space-y-3">
+            <h4 class="font-bold text-amber-300 text-xs">Параметры нового маршрута:</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div>
+                <label class="block text-slate-400 mb-1">Номер маршрута *</label>
+                <input type="text" id="admin-route-num" placeholder="Например: 12" class="w-full patp-input px-3 py-2 rounded-lg text-xs">
+              </div>
+              <div class="sm:col-span-2">
+                <label class="block text-slate-400 mb-1">Название / Трасса *</label>
+                <input type="text" id="admin-route-title" placeholder="Ж/Д Вокзал — Промзона" class="w-full patp-input px-3 py-2 rounded-lg text-xs">
+              </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div>
+                <label class="block text-slate-400 mb-1">Тип маршрута</label>
+                <select id="admin-route-type" class="w-full patp-input px-3 py-2 rounded-lg text-xs">
+                  <option value="Городской маршрут">Городской маршрут</option>
+                  <option value="Пригородный маршрут">Пригородный маршрут</option>
+                  <option value="Экспресс / Скоростной">Экспресс / Скоростной</option>
+                  <option value="Служебный дежурный">Служебный дежурный</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-slate-400 mb-1">Протяженность</label>
+                <input type="text" id="admin-route-dist" placeholder="18.5 км" class="w-full patp-input px-3 py-2 rounded-lg text-xs">
+              </div>
+              <div>
+                <label class="block text-slate-400 mb-1">Интервал движения</label>
+                <input type="text" id="admin-route-interval" placeholder="12-15 мин" class="w-full patp-input px-3 py-2 rounded-lg text-xs">
+              </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div>
+                <label class="block text-slate-400 mb-1">Допущенные автобусы (через запятую)</label>
+                <input type="text" id="admin-route-buses" placeholder="ЛиАЗ-5292, НефАЗ-5299, ПАЗ" class="w-full patp-input px-3 py-2 rounded-lg text-xs">
+              </div>
+              <div>
+                <label class="block text-slate-400 mb-1">IBIS / HOF код</label>
+                <input type="text" id="admin-route-hof" placeholder="Line 01200 / Route 01" class="w-full patp-input px-3 py-2 rounded-lg text-xs">
+              </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+              <button onclick="toggleAddRouteForm()" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 text-xs">Отмена</button>
+              <button onclick="saveNewRouteFromAdmin()" class="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs">Добавить маршрут в реестр</button>
+            </div>
+          </div>
+
+          <!-- Routes List for Admin -->
+          <div id="admin-routes-list" class="space-y-2">
+            <!-- Injected via JS -->
+          </div>
+        </div>
+
+        <!-- ADMIN TAB 3: TICKER & DISPATCH SETTINGS -->
+        <div id="admin-subview-ticker" class="hidden space-y-4">
+          <div class="bg-slate-900/80 p-4 rounded-xl border border-sky-900/60 space-y-4">
+            <div>
+              <h3 class="font-bold text-white text-sm sm:text-base flex items-center gap-2">
+                <i class="fa-solid fa-bullhorn text-sky-400"></i>
+                Настройка оперативной сводки диспетчерской
+              </h3>
+              <p class="text-xs text-slate-400 mt-1">Текст бегущей строки и индикаторов в верхней части сайта для всех водителей.</p>
+            </div>
+
+            <form onsubmit="handleSaveTicker(event)" class="space-y-4 text-xs">
+              <div>
+                <label class="block text-slate-300 font-medium mb-1">Текст оперативного объявления для водителей:</label>
+                <textarea id="admin-ticker-input" rows="3" class="w-full patp-input px-3.5 py-2.5 rounded-xl text-xs"></textarea>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-slate-300 font-medium mb-1">Показатель выпуска на линию:</label>
+                  <input type="text" id="admin-release-input" class="w-full patp-input px-3 py-2 rounded-xl text-xs" placeholder="Выпуск на линию: 100%">
+                </div>
+                <div>
+                  <label class="block text-slate-300 font-medium mb-1">Статус топлива на базе:</label>
+                  <input type="text" id="admin-fuel-input" class="w-full patp-input px-3 py-2 rounded-xl text-xs" placeholder="Топливо: В норме">
+                </div>
+              </div>
+
+              <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 text-white font-bold text-xs transition shadow flex items-center gap-2">
+                <i class="fa-solid fa-check"></i> Сохранить и обновить сводку на сайте
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- ADMIN TAB 4: BACKUP & EXPORT/IMPORT -->
+        <div id="admin-subview-backup" class="hidden space-y-4">
+          <div class="bg-slate-900/80 p-5 rounded-xl border border-sky-900/60 space-y-4">
+            <div>
+              <h3 class="font-bold text-white text-sm sm:text-base flex items-center gap-2">
+                <i class="fa-solid fa-database text-purple-400"></i>
+                Резервное копирование и управление данными
+              </h3>
+              <p class="text-xs text-slate-400 mt-1">
+                Экспортируйте всю базу данных предприятия (сотрудники, путевые отчеты, отгулы, маршруты) в JSON-файл для резервной копии или переноса на другой компьютер.
+              </p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              <div class="p-4 rounded-xl bg-slate-950 border border-purple-900/50 flex flex-col justify-between">
+                <div>
+                  <div class="font-bold text-purple-300 text-sm mb-1 flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-arrow-down"></i> Экспорт базы данных
+                  </div>
+                  <p class="text-xs text-slate-400 mb-3">Сохраните файл со всеми отчетами и сотрудниками на свой ПК.</p>
+                </div>
+                <button onclick="exportEnterpriseData()" class="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition shadow flex items-center justify-center gap-2">
+                  <i class="fa-solid fa-download"></i> Скачать бэкап (JSON)
+                </button>
+              </div>
+
+              <div class="p-4 rounded-xl bg-slate-950 border border-sky-900/50 flex flex-col justify-between">
+                <div>
+                  <div class="font-bold text-sky-300 text-sm mb-1 flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-arrow-up"></i> Импорт базы данных
+                  </div>
+                  <p class="text-xs text-slate-400 mb-3">Восстановите все данные предприятия из сохраненного файла.</p>
+                </div>
+                <label class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-300 font-bold text-xs transition shadow flex items-center justify-center gap-2 cursor-pointer border border-sky-800/60">
+                  <i class="fa-solid fa-upload"></i> Выбрать файл для импорта
+                  <input type="file" id="admin-import-file" accept=".json" onchange="importEnterpriseData(event)" class="hidden">
+                </label>
+              </div>
+            </div>
+
+            <div class="pt-4 border-t border-sky-950 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <div class="text-slate-400 text-center sm:text-left">
+                <i class="fa-solid fa-triangle-exclamation text-amber-400 mr-1"></i> Сброс вернет исходный список маршрутов и учетных записей.
+              </div>
+              <button onclick="resetEnterpriseData()" class="px-4 py-2 rounded-xl bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800/60 font-medium transition text-xs flex items-center gap-1.5">
+                <i class="fa-solid fa-trash-can"></i> Сбросить к заводским настройкам
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="pt-3 border-t border-sky-900/60 flex items-center justify-between text-xs text-slate-400 flex-shrink-0">
+        <div>ОАО «Коренёвский ПАТП» • Панель руководителя v2.0</div>
+        <button onclick="closeModal('modal-admin-panel')" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium transition">
+          Закрыть панель
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: ONLINE PERSONNEL -->
+  <div id="modal-online-users" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="patp-card bg-[#0b1530] border border-emerald-500/40 rounded-2xl w-full max-w-lg p-5 sm:p-6 shadow-2xl relative space-y-4">
+      
+      <!-- Close Button -->
+      <button onclick="closeModal('modal-online-users')" class="absolute top-4 right-4 text-slate-400 hover:text-white transition w-8 h-8 rounded-lg bg-slate-900/80 flex items-center justify-center border border-sky-900/40 cursor-pointer">
+        <i class="fa-solid fa-xmark text-base"></i>
+      </button>
+
+      <!-- Modal Header -->
+      <div class="flex items-center space-x-3.5 border-b border-sky-900/60 pb-3">
+        <div class="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-xl flex-shrink-0">
+          <i class="fa-solid fa-signal animate-pulse"></i>
+        </div>
+        <div>
+          <h3 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+            <span>Сотрудники на связи</span>
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 live-dot"></span>
+          </h3>
+          <p class="text-xs text-slate-400">
+            В сети в диспетчерской и на маршрутах: <b id="modal-online-count" class="text-emerald-300 font-mono">5</b> чел.
+          </p>
+        </div>
+      </div>
+
+      <!-- Personnel Roster List -->
+      <div id="online-users-roster" class="max-h-80 overflow-y-auto space-y-2.5 pr-1">
+        <!-- Rendered via JavaScript -->
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="pt-3 border-t border-sky-900/60 flex items-center justify-between">
+        <button onclick="closeModal('modal-online-users'); switchTab('chat');" class="px-4 py-2 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 text-xs font-bold border border-emerald-500/40 transition flex items-center gap-2 cursor-pointer">
+          <i class="fa-solid fa-comments"></i> <span>Перейти в общий чат</span>
+        </button>
+        <button onclick="closeModal('modal-online-users')" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition cursor-pointer">
+          Закрыть
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+  <!-- Main JavaScript App -->
+  <script src="app.js"></script>
+</body>
+</html>

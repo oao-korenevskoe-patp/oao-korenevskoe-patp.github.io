@@ -1,0 +1,120 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root {
+  --bg-deep: #070d1e;
+  --bg-main: #0b1530;
+  --bg-card: #111e42;
+  --bg-card-hover: #162654;
+  --border-color: rgba(56, 189, 248, 0.15);
+  --border-focus: rgba(56, 189, 248, 0.45);
+  --accent-cyan: #38bdf8;
+  --accent-blue: #2563eb;
+  --accent-glow: rgba(56, 189, 248, 0.2);
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --status-pending: #f59e0b;
+  --status-approved: #10b981;
+  --status-rejected: #ef4444;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--bg-deep);
+  color: var(--text-main);
+  min-height: 100vh;
+  background-image: 
+    radial-gradient(circle at 15% 20%, rgba(30, 58, 138, 0.35) 0%, transparent 40%),
+    radial-gradient(circle at 85% 80%, rgba(14, 116, 144, 0.25) 0%, transparent 40%),
+    linear-gradient(to bottom, #070d1e, #0b1530);
+  background-attachment: fixed;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #070d1e;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e3a8a;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #38bdf8;
+}
+
+/* Glassmorphism cards */
+.patp-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+  transition: all 0.25s ease-in-out;
+}
+
+.patp-card:hover {
+  border-color: var(--border-focus);
+  box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.6), 0 0 15px var(--accent-glow);
+}
+
+.patp-input {
+  background-color: rgba(7, 13, 30, 0.85);
+  border: 1px solid var(--border-color);
+  color: #f8fafc;
+  transition: all 0.2s ease;
+}
+
+.patp-input:focus {
+  outline: none;
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+}
+
+/* Badges for roles */
+.badge-role-director {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.3));
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.45);
+}
+
+.badge-role-hr {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(147, 51, 234, 0.3));
+  color: #d8b4fe;
+  border: 1px solid rgba(168, 85, 247, 0.45);
+}
+
+.badge-role-dispatch {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.2), rgba(2, 132, 199, 0.3));
+  color: #7dd3fc;
+  border: 1px solid rgba(14, 165, 233, 0.45);
+}
+
+.badge-role-driver {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.3));
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.45);
+}
+
+/* Route Badge Pill */
+.route-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  background: #facc15;
+  color: #0f172a;
+  text-shadow: none;
+}
+
+/* Pulse animation for live indicator */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.1); }
+}
+
+.live-dot {
+  animation: pulse-subtle 2s infinite ease-in-out;
+}
