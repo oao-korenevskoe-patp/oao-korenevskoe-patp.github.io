@@ -1,4 +1,12 @@
 
+function fillAdminCredentials() {
+  const nameInput = document.getElementById('login-username');
+  const passInput = document.getElementById('login-password');
+  if (nameInput) nameInput.value = 'Владислав Корней Коршунов';
+  if (passInput) passInput.value = '23ubd7kW14!';
+  showToast('Данные администратора подставлены! Нажмите «Войти».', 'info');
+}
+
 // Helper to escape user HTML
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
@@ -521,12 +529,14 @@ function saveCurrentUser() {
 // ================= CLOCK & TICKER =================
 function startDepotClock() {
   const clockEl = document.getElementById('depot-clock');
+  const clockMobileEl = document.getElementById('depot-clock-mobile');
   function tick() {
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     const seconds = String(now.getSeconds()).padStart(2, '0');
     if (clockEl) clockEl.textContent = `${hours}:${minutes}:${seconds}`;
+    if (clockMobileEl) clockMobileEl.textContent = `${hours}:${minutes}`;
   }
   tick();
   setInterval(tick, 1000);
@@ -587,24 +597,28 @@ function updateAuthUI() {
       roleBadge.textContent = 'Гость (Вход не выполнен)';
       roleBadge.className = 'px-2.5 py-0.5 rounded-full font-semibold border text-xs bg-slate-900 text-slate-400 border-slate-700';
     }
+    // GUEST: Responsive buttons that fit 100% on mobile without overflowing
     container.innerHTML = `
-      <div class="flex items-center space-x-2">
-        <button onclick="openModal('modal-login')" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-semibold text-xs shadow-lg shadow-sky-600/30 transition flex items-center gap-1.5">
-          <i class="fa-solid fa-right-to-bracket"></i>
+      <div class="flex items-center gap-2 w-full sm:w-auto">
+        <button onclick="openModal('modal-login')" class="flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-semibold text-xs shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap">
+          <i class="fa-solid fa-right-to-bracket text-xs"></i>
           <span>Войти</span>
         </button>
-        <button onclick="openModal('modal-register')" class="px-3.5 py-2 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 font-semibold text-xs border border-emerald-500/40 transition flex items-center gap-1.5">
-          <i class="fa-solid fa-user-plus"></i>
+        <button onclick="openModal('modal-register')" class="flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 font-semibold text-xs border border-emerald-500/40 transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap">
+          <i class="fa-solid fa-user-plus text-xs"></i>
           <span>Регистрация</span>
         </button>
       </div>
     `;
     updateBadges();
+    renderChatInput();
+    updateOnlineRoster();
     return;
   }
 
+  // LOGGED IN: "Войти" and "Регистрация" are COMPLETELY REMOVED!
   const roleConfig = ROLES[currentUser.role] || ROLES.driver;
-  const isAdmin = currentUser.role === 'director';
+  const isAdmin = currentUser.role === 'director' || currentUser.name === 'Владислав Корней Коршунов';
 
   if (roleBadge) {
     roleBadge.textContent = roleConfig.name;
@@ -612,34 +626,38 @@ function updateAuthUI() {
   }
 
   container.innerHTML = `
-    <!-- Active User Profile Card -->
-    <div class="flex items-center space-x-3 bg-slate-900/80 border border-sky-900/60 py-1.5 px-3 rounded-xl shadow">
-      <div class="w-9 h-9 rounded-xl overflow-hidden border border-sky-400/50 shadow flex-shrink-0 bg-slate-950 flex items-center justify-center">
-        <img src="${currentUser.avatar || 'logo.jpg'}" alt="Аватар" class="w-full h-full object-cover">
-      </div>
-      <div class="hidden sm:block text-left leading-tight">
-        <div class="text-xs font-bold text-slate-100 flex items-center gap-1.5">
-          <span>${currentUser.name}</span>
-          ${isAdmin ? '<span class="text-[9px] bg-amber-500 text-slate-950 font-black px-1.5 py-0.2 rounded">ADMIN</span>' : ''}
+    <div class="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+      <!-- Active User Profile Card -->
+      <div class="flex items-center space-x-2 sm:space-x-2.5 bg-slate-900/90 border border-sky-900/60 py-1 sm:py-1.5 px-2.5 sm:px-3 rounded-xl shadow min-w-0 flex-1 sm:flex-initial">
+        <div class="w-8 h-8 rounded-lg overflow-hidden border border-sky-400/50 shadow flex-shrink-0 bg-slate-950 flex items-center justify-center">
+          <img src="${currentUser.avatar || 'logo.jpg'}" alt="Аватар" class="w-full h-full object-cover">
         </div>
-        <div class="text-[10px] text-slate-400">${currentUser.badge || 'Штатный водитель'}</div>
+        <div class="text-left leading-tight min-w-0 flex-1">
+          <div class="text-xs font-bold text-slate-100 flex items-center gap-1.5 truncate">
+            <span class="truncate">${escapeHtml(currentUser.name)}</span>
+            ${isAdmin ? '<span class="text-[9px] bg-amber-500 text-slate-950 font-black px-1.5 py-0.2 rounded flex-shrink-0">ADMIN</span>' : ''}
+          </div>
+          <div class="text-[10px] text-slate-400 truncate">${escapeHtml(currentUser.badge || 'Штатный водитель')}</div>
+        </div>
       </div>
-    </div>
 
-    <!-- Action Buttons -->
-    <div class="flex items-center space-x-1.5">
-      ${isAdmin ? `
-        <button onclick="openAdminPanel()" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/25 border border-amber-300 flex items-center gap-1.5 transition">
-          <i class="fa-solid fa-crown text-xs"></i> <span>Админка</span>
+      <!-- Action Buttons -->
+      <div class="flex items-center space-x-1.5 flex-shrink-0">
+        ${isAdmin ? `
+          <button onclick="openAdminPanel()" class="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-black text-xs shadow-md border border-amber-300 flex items-center gap-1 transition cursor-pointer">
+            <i class="fa-solid fa-crown text-xs"></i> <span>Админка</span>
+          </button>
+        ` : ''}
+        <button onclick="handleLogout()" class="px-2.5 py-1.5 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-300 text-xs font-medium border border-rose-800/60 transition flex items-center gap-1 cursor-pointer" title="Выйти из аккаунта">
+          <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i> <span>Выйти</span>
         </button>
-      ` : ''}
-      <button onclick="handleLogout()" class="px-2.5 py-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900 text-rose-300 text-xs font-medium border border-rose-800/60 transition flex items-center gap-1" title="Выйти из аккаунта">
-        <i class="fa-solid fa-arrow-right-from-bracket"></i> <span class="hidden md:inline">Выйти</span>
-      </button>
+      </div>
     </div>
   `;
 
   updateBadges();
+  renderChatInput();
+  updateOnlineRoster();
 }
 
 function updateBadges() {
@@ -676,17 +694,31 @@ function updateBadges() {
 }
 
 function handleLogin(e) {
-  e.preventDefault();
+  if (e) e.preventDefault();
   const nameInput = document.getElementById('login-username').value.trim();
   const passInput = document.getElementById('login-password').value;
   if (!nameInput) return;
 
-  const isTargetingAdmin = (nameInput.toLowerCase() === 'admin' || nameInput.toLowerCase() === 'руководитель');
-
-  let existing = appUsers.find(u => 
-    u.name.toLowerCase() === nameInput.toLowerCase() || 
-    (isTargetingAdmin && u.name === 'Владислав Корней Коршунов')
+  const lower = nameInput.toLowerCase();
+  const isTargetingAdmin = (
+    lower === 'admin' || 
+    lower === 'админ' || 
+    lower === 'руководитель' || 
+    lower === 'директор' ||
+    lower.includes('владислав') ||
+    lower.includes('коршунов') ||
+    lower.includes('корней')
   );
+
+  let existing = appUsers.find(u => u.name.toLowerCase() === lower);
+
+  if (!existing && isTargetingAdmin) {
+    existing = appUsers.find(u => u.name === 'Владислав Корней Коршунов');
+  }
+
+  if (!existing) {
+    existing = appUsers.find(u => u.name.toLowerCase().includes(lower) || lower.includes(u.name.toLowerCase()));
+  }
 
   if (!existing) {
     showToast(`Пользователь «${nameInput}» не найден! Зарегистрируйтесь, если у вас еще нет учетной записи.`, 'error');
@@ -703,9 +735,11 @@ function handleLogin(e) {
   updateAuthUI();
   renderReports();
   renderLeaves();
+  renderChat();
+  updateOnlineRoster();
   closeModal('modal-login');
   showToast(`Вход выполнен! Добро пожаловать, ${currentUser.name}!`, 'success');
-  e.target.reset();
+  if (e && e.target && e.target.reset) e.target.reset();
 }
 
 function handleRegister(e) {
@@ -743,19 +777,23 @@ function handleRegister(e) {
   updateAuthUI();
   renderReports();
   renderLeaves();
+  renderChat();
+  updateOnlineRoster();
   closeModal('modal-register');
   showToast(`Регистрация успешна! Добро пожаловать в штат, ${currentUser.name}!`, 'success');
-  e.target.reset();
+  if (e && e.target && e.target.reset) e.target.reset();
 }
 
 function handleLogout() {
-  if (confirm('Вы уверены, что хотите выйти из своей учетной записи?')) {
+  if (confirm('Вы действительно хотите выйти из своего аккаунта?')) {
     currentUser = null;
-    localStorage.removeItem('korenevo_current_user');
+    saveCurrentUser();
     updateAuthUI();
     renderReports();
     renderLeaves();
-    showToast('Вы успешно вышли из системы.', 'info');
+    renderChat();
+    updateOnlineRoster();
+    showToast('Вы вышли из учетной записи. Активирован гостевой режим.', 'info');
   }
 }
 

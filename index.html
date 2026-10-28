@@ -17,49 +17,57 @@
 
   <!-- TOP HEADER / BRANDING -->
   <header class="border-b border-sky-900/50 bg-[#091124]/90 backdrop-blur sticky top-0 z-40 shadow-xl">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between min-h-[5.5rem] py-2">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-2.5 sm:py-3">
         
-        <!-- Logo & Title -->
-        <div class="flex items-center space-x-3.5 sm:space-x-4">
-          <div class="flex flex-col items-center flex-shrink-0">
-            <div class="relative w-14 h-14 rounded-2xl overflow-hidden shadow-lg shadow-sky-500/25 border-2 border-sky-400/50 bg-slate-900 group">
-              <img src="logo.jpg" alt="ОАО Коренёвский ПАТП" class="w-full h-full object-cover">
-              <div class="absolute inset-0 ring-1 ring-inset ring-white/20 rounded-2xl"></div>
+        <!-- Top row on mobile / Left column on desktop: Logo & Title -->
+        <div class="flex items-center justify-between sm:justify-start space-x-3 min-w-0">
+          <div class="flex items-center space-x-2.5 sm:space-x-3.5 min-w-0">
+            <div class="flex flex-col items-center flex-shrink-0">
+              <div class="relative w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl overflow-hidden shadow-lg shadow-sky-500/25 border-2 border-sky-400/50 bg-slate-900 group">
+                <img src="logo.jpg" alt="ОАО Коренёвский ПАТП" class="w-full h-full object-cover">
+                <div class="absolute inset-0 ring-1 ring-inset ring-white/20 rounded-xl sm:rounded-2xl"></div>
+              </div>
+              <!-- СЧЕТЧИК ОНЛАЙНА СВЕРХУ СЛЕВА ПОД АВАТАРКОЙ -->
+              <button onclick="openOnlineModal()" id="online-counter-btn" class="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-950/90 border border-emerald-500/50 text-[9px] sm:text-[10px] font-bold text-emerald-300 shadow-md hover:bg-emerald-900 hover:border-emerald-400 transition cursor-pointer" title="Нажмите, чтобы увидеть, кто сейчас в сети">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 live-dot"></span>
+                <span>Онлайн: <b id="online-count-num" class="text-white font-mono">5</b></span>
+              </button>
             </div>
-            <!-- СЧЕТЧИК ОНЛАЙНА СВЕРХУ СЛЕВА ПОД АВАТАРКОЙ -->
-            <button onclick="openOnlineModal()" id="online-counter-btn" class="mt-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-950/90 border border-emerald-500/50 text-[10px] font-bold text-emerald-300 shadow-md hover:bg-emerald-900 hover:border-emerald-400 transition cursor-pointer" title="Нажмите, чтобы увидеть, кто сейчас в сети">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 live-dot"></span>
-              <span>Онлайн: <b id="online-count-num" class="text-white font-mono">5</b></span>
-            </button>
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-wider">OMSI 2</span>
+                <span class="flex items-center text-[10px] sm:text-xs text-sky-400/80 font-mono">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1 live-dot"></span>
+                  На связи
+                </span>
+              </div>
+              <h1 class="text-base sm:text-2xl md:text-3xl font-black tracking-tight bg-gradient-to-r from-white via-sky-100 to-sky-300 bg-clip-text text-transparent leading-tight mt-0.5 truncate">
+                ОАО «Коренёвский ПАТП»
+              </h1>
+              <div class="text-[10px] sm:text-[11px] text-sky-300/80 font-medium tracking-wide hidden sm:block">
+                «для тех, кто ценит качество и комфорт»
+              </div>
+            </div>
           </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-wider">OMSI 2 Enterprise</span>
-              <span class="flex items-center text-xs text-sky-400/80 font-mono">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 mr-1.5 live-dot"></span>
-                Диспетчерская на связи
-              </span>
-            </div>
-            <h1 class="text-2xl sm:text-3xl font-black tracking-tight bg-gradient-to-r from-white via-sky-100 to-sky-300 bg-clip-text text-transparent leading-none mt-0.5">
-              ОАО «Коренёвский ПАТП»
-            </h1>
-            <div class="text-[11px] text-sky-300/80 font-medium tracking-wide mt-1 hidden sm:block">
-              «для тех, кто ценит качество и комфорт»
-            </div>
+
+          <!-- Digital Clock on mobile -->
+          <div class="sm:hidden flex flex-col text-right pr-1 font-mono text-[10px] flex-shrink-0 bg-slate-900/60 px-2 py-1 rounded-lg border border-sky-900/40">
+            <span class="text-slate-400 text-[9px]">Время:</span>
+            <span id="depot-clock-mobile" class="text-sky-300 font-bold">12:00</span>
           </div>
         </div>
 
-        <!-- Dispatch Clock & User Account Panel -->
-        <div class="flex items-center space-x-3 sm:space-x-5">
-          <!-- Digital Clock -->
-          <div class="hidden md:flex flex-col text-right pr-3 border-r border-sky-900/60 font-mono text-xs">
+        <!-- Right Side / Second row on mobile: User Account Panel or Login Buttons -->
+        <div class="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+          <!-- Digital Clock for desktop -->
+          <div class="hidden sm:flex flex-col text-right pr-3 border-r border-sky-900/60 font-mono text-xs">
             <span class="text-slate-400">Время депо (МСК):</span>
             <span id="depot-clock" class="text-sky-300 font-bold text-sm tracking-widest">12:00:00</span>
           </div>
 
           <!-- Active User Info or Auth Buttons -->
-          <div id="auth-nav-container" class="flex items-center space-x-3">
+          <div id="auth-nav-container" class="w-full sm:w-auto flex items-center justify-end">
             <!-- Injected via JavaScript based on login state -->
           </div>
         </div>
@@ -364,18 +372,31 @@
   <!-- ==================== MODALS ==================== -->
 
   <!-- MODAL: LOGIN -->
-  <div id="modal-login" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="patp-card w-full max-w-md rounded-2xl p-6 border border-sky-700/50 shadow-2xl relative animate-in fade-in duration-200">
-      <button onclick="closeModal('modal-login')" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">
+  <div id="modal-login" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="patp-card w-full max-w-md rounded-2xl p-5 sm:p-6 border border-sky-700/50 shadow-2xl relative max-h-[92vh] overflow-y-auto">
+      <button onclick="closeModal('modal-login')" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg cursor-pointer">
         <i class="fa-solid fa-xmark"></i>
       </button>
 
-      <div class="text-center mb-6">
-        <div class="w-12 h-12 rounded-xl bg-blue-600/30 text-sky-400 border border-sky-500/30 flex items-center justify-center mx-auto mb-3">
+      <div class="text-center mb-4 sm:mb-6">
+        <div class="w-12 h-12 rounded-xl bg-blue-600/30 text-sky-400 border border-sky-500/30 flex items-center justify-center mx-auto mb-2 sm:mb-3">
           <i class="fa-solid fa-right-to-bracket text-xl"></i>
         </div>
-        <h3 class="text-xl font-bold text-white">Вход в систему ПАТП</h3>
-        <p class="text-xs text-slate-400 mt-1">Введите ваши учетные данные водителя или руководства</p>
+        <h3 class="text-lg sm:text-xl font-bold text-white">Вход в систему ПАТП</h3>
+        <p class="text-xs text-slate-400 mt-0.5 sm:mt-1">Введите учетные данные водителя или руководства</p>
+      </div>
+
+      <!-- Quick admin credentials autofill for mobile convenience -->
+      <div class="mb-4 p-3 rounded-xl bg-slate-900/90 border border-amber-500/30 flex items-center justify-between gap-2">
+        <div class="text-left leading-tight min-w-0">
+          <div class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+            <i class="fa-solid fa-crown text-[10px]"></i> <span>Руководитель (Admin)</span>
+          </div>
+          <div class="text-[11px] text-slate-300 truncate">Владислав Корней Коршунов</div>
+        </div>
+        <button type="button" onclick="fillAdminCredentials()" class="px-2.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition flex-shrink-0 cursor-pointer">
+          Быстрый вход
+        </button>
       </div>
 
       <form id="form-login" onsubmit="handleLogin(event)" class="space-y-4">
