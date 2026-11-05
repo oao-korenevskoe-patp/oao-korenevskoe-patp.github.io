@@ -83,6 +83,11 @@
           <span id="current-role-badge" class="px-2.5 py-0.5 rounded-full font-semibold border text-xs">
             Загрузка...
           </span>
+          <!-- Live Cloud Sync Badge -->
+          <button type="button" onclick="handleCloudBadgeClick()" id="cloud-sync-status-badge" class="ml-1 sm:ml-2 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold flex items-center gap-1.5 bg-slate-900 border border-slate-700 text-slate-400 hover:border-sky-500/50 transition cursor-pointer" title="Статус онлайн-синхронизации с базой данных">
+            <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+            <span>Облако: Проверка...</span>
+          </button>
         </div>
         <div class="flex items-center gap-3 text-slate-400 text-[11px]">
           <span><i class="fa-solid fa-location-dot text-sky-400 mr-1"></i>Центральное депо ПАТП</span>
@@ -386,16 +391,15 @@
         <p class="text-xs text-slate-400 mt-0.5 sm:mt-1">Введите учетные данные водителя или руководства</p>
       </div>
 
-      <!-- Quick admin credentials autofill for mobile convenience -->
-      <div class="mb-4 p-3 rounded-xl bg-slate-900/90 border border-amber-500/30 flex items-center justify-between gap-2">
-        <div class="text-left leading-tight min-w-0">
-          <div class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-            <i class="fa-solid fa-crown text-[10px]"></i> <span>Руководитель (Admin)</span>
-          </div>
-          <div class="text-[11px] text-slate-300 truncate">Владислав Корней Коршунов</div>
-        </div>
-        <button type="button" onclick="fillAdminCredentials()" class="px-2.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition flex-shrink-0 cursor-pointer">
-          Быстрый вход
+      <!-- Auth Mode Tabs (Switch between Login and Registration) -->
+      <div class="flex border-b border-sky-900/50 mb-5 pb-1 gap-2">
+        <button type="button" class="flex-1 py-2.5 rounded-xl font-bold text-xs bg-sky-600/30 text-sky-200 border border-sky-500/40 shadow-inner flex items-center justify-center gap-1.5 cursor-pointer">
+          <i class="fa-solid fa-right-to-bracket text-sky-400"></i>
+          <span>Вход в аккаунт</span>
+        </button>
+        <button type="button" onclick="switchToRegisterModal()" class="flex-1 py-2.5 rounded-xl font-medium text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition flex items-center justify-center gap-1.5 cursor-pointer">
+          <i class="fa-solid fa-user-plus text-emerald-400"></i>
+          <span>Регистрация</span>
         </button>
       </div>
 
@@ -431,11 +435,23 @@
         <i class="fa-solid fa-xmark"></i>
       </button>
 
+      <!-- Auth Mode Tabs (Switch between Login and Registration) -->
+      <div class="flex border-b border-sky-900/50 mb-4 pb-1 gap-2">
+        <button type="button" onclick="switchToLoginModal()" class="flex-1 py-2.5 rounded-xl font-medium text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition flex items-center justify-center gap-1.5 cursor-pointer">
+          <i class="fa-solid fa-right-to-bracket text-sky-400"></i>
+          <span>Вход в аккаунт</span>
+        </button>
+        <button type="button" class="flex-1 py-2.5 rounded-xl font-bold text-xs bg-emerald-600/30 text-emerald-200 border border-emerald-500/40 shadow-inner flex items-center justify-center gap-1.5 cursor-pointer">
+          <i class="fa-solid fa-user-plus text-emerald-400"></i>
+          <span>Регистрация</span>
+        </button>
+      </div>
+
       <div class="text-center mb-5">
-        <div class="w-12 h-12 rounded-xl bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto mb-3">
+        <div class="w-12 h-12 rounded-xl bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto mb-2">
           <i class="fa-solid fa-user-plus text-xl"></i>
         </div>
-        <h3 class="text-xl font-bold text-white">Регистрация нового водителя</h3>
+        <h3 class="text-lg sm:text-xl font-bold text-white">Регистрация нового водителя</h3>
         <p class="text-xs text-slate-400 mt-1">Создайте свой персональный профиль в ОАО «Коренёвский ПАТП»</p>
       </div>
 
@@ -805,6 +821,11 @@
           <i class="fa-solid fa-bullhorn"></i>
           <span>Сводка диспетчерской</span>
         </button>
+        <button id="admin-tab-btn-cloud" onclick="switchAdminTab('cloud')" class="py-2.5 px-4 rounded-xl font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-900 flex items-center gap-2 transition whitespace-nowrap">
+          <i class="fa-solid fa-cloud text-sky-400"></i>
+          <span>Облачная база (Firebase)</span>
+          <span id="admin-cloud-status-badge" class="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-800 text-slate-400 font-mono">Offline</span>
+        </button>
         <button id="admin-tab-btn-backup" onclick="switchAdminTab('backup')" class="py-2.5 px-4 rounded-xl font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-900 flex items-center gap-2 transition whitespace-nowrap">
           <i class="fa-solid fa-database"></i>
           <span>Резервная копия (JSON)</span>
@@ -1057,6 +1078,82 @@
                 <i class="fa-solid fa-check"></i> Сохранить и обновить сводку на сайте
               </button>
             </form>
+          </div>
+        </div>
+
+        <!-- ADMIN TAB: CLOUD DATABASE & MULTI-DEVICE SYNC -->
+        <div id="admin-subview-cloud" class="hidden space-y-4">
+          <div class="bg-slate-900/80 p-5 rounded-xl border border-sky-900/60 space-y-4">
+            
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-sky-900/40 pb-3">
+              <div>
+                <h3 class="font-bold text-white text-base sm:text-lg flex items-center gap-2">
+                  <i class="fa-solid fa-cloud text-sky-400"></i>
+                  Общая онлайн-база данных (Firebase Realtime Database)
+                </h3>
+                <p class="text-xs text-slate-400 mt-1">
+                  Подключение единой базы данных, чтобы созданные аккаунты, зарегистрированные водители, сообщения в чате, отчеты и подвижной состав моментально отображались на всех смартфонах и ПК без задержек.
+                </p>
+              </div>
+              <div id="admin-cloud-indicator-box" class="flex-shrink-0 flex items-center gap-2 p-2.5 rounded-xl bg-slate-950 border border-sky-900/60 text-xs">
+                <span class="w-2.5 h-2.5 rounded-full bg-slate-500" id="admin-cloud-dot"></span>
+                <span id="admin-cloud-text" class="font-bold text-slate-300">Проверка связи...</span>
+              </div>
+            </div>
+
+            <!-- Database URL Config Form -->
+            <form id="admin-cloud-form" onsubmit="handleSaveCloudConfig(event)" class="space-y-4 bg-slate-950/80 p-4 rounded-xl border border-sky-900/50">
+              <div>
+                <label class="block text-xs font-semibold text-slate-200 mb-1.5 flex items-center justify-between">
+                  <span>URL базы данных Firebase Realtime Database:</span>
+                  <span class="text-[11px] text-emerald-400 font-normal">Бесплатный сервис Google</span>
+                </label>
+                <div class="flex flex-col sm:flex-row gap-2">
+                  <input type="url" id="admin-firebase-url-input" class="flex-grow patp-input px-3.5 py-2.5 rounded-xl text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500/50" placeholder="https://ваш-проект-default-rtdb.firebaseio.com/">
+                  <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer flex-shrink-0">
+                    <i class="fa-solid fa-link"></i> <span>Подключить и сохранить</span>
+                  </button>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-1.5">
+                  Ссылка оканчивается на <code>firebaseio.com/</code> или <code>firebasedatabase.app/</code>.
+                </p>
+              </div>
+
+              <!-- Quick action buttons -->
+              <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-sky-900/40">
+                <button type="button" onclick="manualSyncToCloud()" class="px-3.5 py-2 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition flex items-center gap-2 cursor-pointer">
+                  <i class="fa-solid fa-cloud-arrow-up"></i>
+                  <span>Выгрузить текущую базу в облако</span>
+                </button>
+                <button type="button" onclick="manualFetchFromCloud()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-700/50 text-xs font-bold transition flex items-center gap-2 cursor-pointer">
+                  <i class="fa-solid fa-cloud-arrow-down"></i>
+                  <span>Загрузить данные из облака</span>
+                </button>
+                <span id="admin-last-sync-label" class="text-[11px] text-slate-400 font-mono ml-auto">
+                  Синхронизация: ожидает
+                </span>
+              </div>
+            </form>
+
+            <!-- Step by Step Setup Guide (Very simple, 1 minute) -->
+            <div class="p-4 rounded-xl bg-gradient-to-br from-blue-950/40 to-slate-950 border border-sky-800/40 space-y-3">
+              <h4 class="font-bold text-sm text-sky-300 flex items-center gap-2">
+                <i class="fa-solid fa-circle-info text-amber-400"></i>
+                Пошаговая инструкция подключения общей базы (1-2 минуты, бесплатно):
+              </h4>
+              <ol class="list-decimal list-inside space-y-1.5 text-xs text-slate-300 leading-relaxed pl-1">
+                <li>Откройте сайт <a href="https://console.firebase.google.com" target="_blank" class="text-sky-400 underline font-semibold">console.firebase.google.com</a> (вход под любой почтой Google).</li>
+                <li>Нажмите <strong>«Создать проект»</strong> (введите любое название, например <code>korenevskoe-patp</code>).</li>
+                <li>В меню слева найдите раздел <strong>«Realtime Database»</strong> → нажмите <strong>«Создать базу данных»</strong>.</li>
+                <li>Выберите регион (например, Бельгия или США) и выберите режим <strong>«Тестовый режим» (Start in test mode)</strong>, чтобы правила разрешали чтение и запись.</li>
+                <li>Скопируйте адрес вашей базы (вверху страницы, начинается на <code>https://...</code>) и вставьте в поле выше.</li>
+                <li>Нажмите кнопку <strong>«Подключить и сохранить»</strong>.</li>
+              </ol>
+              <div class="text-[11px] text-amber-300/90 bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20">
+                💡 <strong>Как поделиться с водителями:</strong> Вы можете отправить ссылку на сайт с параметром <code>#db=ВАША_ССЫЛКА_FIREBASE</code> (например: <code>https://oao-korenevskoe-patp.github.io/#db=https://ваш-проект-default-rtdb.firebaseio.com/</code>), и у всех водителей база подключится автоматически при первом открытии!
+              </div>
+            </div>
+
           </div>
         </div>
 

@@ -1,11 +1,5 @@
 
-function fillAdminCredentials() {
-  const nameInput = document.getElementById('login-username');
-  const passInput = document.getElementById('login-password');
-  if (nameInput) nameInput.value = 'Владислав Корней Коршунов';
-  if (passInput) passInput.value = '23ubd7kW14!';
-  showToast('Данные администратора подставлены! Нажмите «Войти».', 'info');
-}
+
 
 // Helper to escape user HTML
 function escapeHtml(str) {
@@ -402,6 +396,388 @@ let appFleet = [];
 let appChatMessages = [];
 
 // ================= STORAGE FUNCTIONS =================
+
+// ================= CLOUD REALTIME DATABASE SYNC ENGINE =================
+let CLOUD_CONFIG = {
+  firebaseUrl: localStorage.getItem('korenevo_firebase_url') || '',
+  pollIntervalMs: 3500,
+  isSyncing: false,
+  lastSyncTime: null,
+  status: 'offline' // 'online', 'syncing', 'offline', 'error'
+};
+
+function getFirebaseUrl() {
+  let url = (CLOUD_CONFIG.firebaseUrl || '').trim();
+  if (!url) return '';
+  if (url.endsWith('/')) url = url.slice(0, -1);
+  return url;
+}
+
+function checkUrlHashForDb() {
+  try {
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    let dbMatch = hash.match(/#(?:db|firebase)=([^&]+)/) || search.match(/[?&](?:db|firebase)=([^&]+)/);
+    if (dbMatch && dbMatch[1]) {
+      const decoded = decodeURIComponent(dbMatch[1]).trim();
+      if (decoded && (decoded.startsWith('http://') || decoded.startsWith('https://'))) {
+        localStorage.setItem('korenevo_firebase_url', decoded);
+        CLOUD_CONFIG.firebaseUrl = decoded;
+        showToast('Облачная база подключена по ссылке из адреса сайта!', 'success');
+      }
+    }
+  } catch (e) {
+    console.warn('Hash parse error:', e);
+  }
+}
+
+function updateCloudStatusUI() {
+  const badge = document.getElementById('cloud-sync-status-badge');
+  const adminBadge = document.getElementById('admin-cloud-status-badge');
+  const adminDot = document.getElementById('admin-cloud-dot');
+  const adminText = document.getElementById('admin-cloud-text');
+  const adminLastSync = document.getElementById('admin-last-sync-label');
+  const urlInput = document.getElementById('admin-firebase-url-input');
+
+  if (urlInput && !urlInput.value && CLOUD_CONFIG.firebaseUrl) {
+    urlInput.value = CLOUD_CONFIG.firebaseUrl;
+  }
+
+  const hasUrl = !!getFirebaseUrl();
+
+  if (badge) {
+    if (!hasUrl) {
+      badge.className = "ml-1 sm:ml-2 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold flex items-center gap-1.5 bg-slate-900 border border-slate-700 text-slate-400 hover:border-sky-500/50 transition cursor-pointer";
+      badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span> <span>База: Локальная</span>`;
+      badge.title = "Данные сохраняются только в памяти этого браузера. Нажмите для подключения онлайн-базы.";
+    } else if (CLOUD_CONFIG.isSyncing) {
+      badge.className = "ml-1 sm:ml-2 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold flex items-center gap-1.5 bg-blue-950/80 border border-sky-500/50 text-sky-300 transition cursor-pointer";
+      badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping"></span> <span>Синхронизация...</span>`;
+    } else if (CLOUD_CONFIG.status === 'online') {
+      badge.className = "ml-1 sm:ml-2 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold flex items-center gap-1.5 bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 transition cursor-pointer";
+      badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 live-dot"></span> <span>Облако онлайн</span>`;
+      badge.title = "Все устройства синхронизируются в реальном времени через Firebase!";
+    } else if (CLOUD_CONFIG.status === 'error') {
+      badge.className = "ml-1 sm:ml-2 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold flex items-center gap-1.5 bg-rose-950/80 border border-rose-500/50 text-rose-300 transition cursor-pointer";
+      badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span> <span>Ошибка связи</span>`;
+    }
+  }
+
+  if (adminBadge) {
+    if (!hasUrl) {
+      adminBadge.textContent = "Offline";
+      adminBadge.className = "px-1.5 py-0.2 rounded-full text-[10px] bg-slate-800 text-slate-400 font-mono";
+    } else if (CLOUD_CONFIG.status === 'online') {
+      adminBadge.textContent = "Online";
+      adminBadge.className = "px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-500/30 text-emerald-300 font-mono border border-emerald-500/40";
+    } else {
+      adminBadge.textContent = "Connecting";
+      adminBadge.className = "px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500/30 text-amber-300 font-mono";
+    }
+  }
+
+  if (adminDot && adminText) {
+    if (!hasUrl) {
+      adminDot.className = "w-2.5 h-2.5 rounded-full bg-amber-400";
+      adminText.className = "font-bold text-amber-300";
+      adminText.textContent = "Локальный режим (только этот телефон)";
+    } else if (CLOUD_CONFIG.status === 'online') {
+      adminDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400 live-dot";
+      adminText.className = "font-bold text-emerald-300";
+      adminText.textContent = "Подключено к Firebase (Синхронизация активна)";
+    } else if (CLOUD_CONFIG.isSyncing) {
+      adminDot.className = "w-2.5 h-2.5 rounded-full bg-sky-400 animate-ping";
+      adminText.className = "font-bold text-sky-300";
+      adminText.textContent = "Идет обмен данными...";
+    } else {
+      adminDot.className = "w-2.5 h-2.5 rounded-full bg-rose-400";
+      adminText.className = "font-bold text-rose-300";
+      adminText.textContent = "Ошибка подключения к базе";
+    }
+  }
+
+  if (adminLastSync) {
+    if (CLOUD_CONFIG.lastSyncTime) {
+      const d = new Date(CLOUD_CONFIG.lastSyncTime);
+      const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+      adminLastSync.textContent = `Посл. синхронизация: ${timeStr}`;
+    } else {
+      adminLastSync.textContent = hasUrl ? "Ожидание первого ответа..." : "Не настроено";
+    }
+  }
+}
+
+function handleCloudBadgeClick() {
+  if (currentUser && currentUser.role === 'director') {
+    openAdminPanel();
+    switchAdminTab('cloud');
+  } else {
+    showToast('Облачная база объединяет чат, отчеты и пользователей между всеми устройствами!', 'info');
+  }
+}
+
+function getEnterpriseStatePayload() {
+  return {
+    users: appUsers,
+    fleet: appFleet,
+    routes: appRoutes,
+    reports: appReports,
+    leaves: appLeaves,
+    chat: appChatMessages,
+    ticker: {
+      text: localStorage.getItem('korenevo_ticker_text') || 'Уважаемые водители! На 104-м пригородном маршруте в районе с. Коренёво открыт отремонтированный объезд.',
+      release: localStorage.getItem('korenevo_ticker_release') || 'Выпуск на линию: 100%',
+      fuel: localStorage.getItem('korenevo_ticker_fuel') || 'Топливо: В норме'
+    },
+    lastUpdated: Date.now(),
+    updatedBy: currentUser ? currentUser.name : 'Гость'
+  };
+}
+
+async function syncToCloud(isSilent = true) {
+  const baseUrl = getFirebaseUrl();
+  if (!baseUrl) {
+    updateCloudStatusUI();
+    return;
+  }
+
+  CLOUD_CONFIG.isSyncing = true;
+  updateCloudStatusUI();
+
+  try {
+    const endpoint = baseUrl.endsWith('.json') ? baseUrl : `${baseUrl}/patp_db.json`;
+    const payload = getEnterpriseStatePayload();
+
+    const response = await fetch(endpoint, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    CLOUD_CONFIG.status = 'online';
+    CLOUD_CONFIG.lastSyncTime = Date.now();
+    if (!isSilent) {
+      showToast('Все данные предприятия успешно выгружены в облако!', 'success');
+    }
+  } catch (err) {
+    console.error('Cloud Sync Error:', err);
+    CLOUD_CONFIG.status = 'error';
+    if (!isSilent) {
+      showToast('Ошибка при синхронизации с облаком. Проверьте ссылку Firebase.', 'error');
+    }
+  } finally {
+    CLOUD_CONFIG.isSyncing = false;
+    updateCloudStatusUI();
+  }
+}
+
+async function fetchFromCloud(isSilent = true) {
+  const baseUrl = getFirebaseUrl();
+  if (!baseUrl) {
+    updateCloudStatusUI();
+    return;
+  }
+
+  try {
+    const endpoint = baseUrl.endsWith('.json') ? baseUrl : `${baseUrl}/patp_db.json`;
+    const response = await fetch(endpoint, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const cloudData = await response.json();
+    if (cloudData && typeof cloudData === 'object') {
+      applyCloudData(cloudData);
+      CLOUD_CONFIG.status = 'online';
+      CLOUD_CONFIG.lastSyncTime = Date.now();
+      if (!isSilent) {
+        showToast('Данные успешно загружены из облачной базы!', 'success');
+      }
+    } else {
+      console.log('Cloud database is empty, initial seeding...');
+      await syncToCloud(true);
+      CLOUD_CONFIG.status = 'online';
+      CLOUD_CONFIG.lastSyncTime = Date.now();
+    }
+  } catch (err) {
+    console.warn('Fetch from cloud warning:', err);
+    if (CLOUD_CONFIG.status !== 'online') {
+      CLOUD_CONFIG.status = 'error';
+    }
+    if (!isSilent) {
+      showToast('Не удалось получить данные из облачной базы. Проверьте ссылку.', 'error');
+    }
+  } finally {
+    updateCloudStatusUI();
+  }
+}
+
+function applyCloudData(data) {
+  if (!data) return;
+
+  let hasUsersChanged = false;
+  let hasReportsChanged = false;
+  let hasLeavesChanged = false;
+  let hasFleetChanged = false;
+  let hasRoutesChanged = false;
+  let hasChatChanged = false;
+
+  // 1. Merge Users
+  if (Array.isArray(data.users) && data.users.length > 0) {
+    const prevCount = appUsers.length;
+    const userMap = new Map();
+    appUsers.forEach(u => userMap.set(u.id, u));
+    data.users.forEach(cu => userMap.set(cu.id, cu));
+
+    appUsers = Array.from(userMap.values());
+    ensureChiefAdminExists();
+    saveUsers();
+
+    if (appUsers.length !== prevCount) hasUsersChanged = true;
+
+    if (currentUser) {
+      const freshUser = appUsers.find(u => u.id === currentUser.id || u.name.toLowerCase() === currentUser.name.toLowerCase());
+      if (freshUser) {
+        currentUser = freshUser;
+        saveCurrentUser();
+      }
+    }
+  }
+
+  // 2. Merge Fleet
+  if (Array.isArray(data.fleet) && data.fleet.length > 0) {
+    appFleet = data.fleet;
+    saveFleet();
+    hasFleetChanged = true;
+  }
+
+  // 3. Merge Routes
+  if (Array.isArray(data.routes) && data.routes.length > 0) {
+    appRoutes = data.routes;
+    saveRoutes();
+    hasRoutesChanged = true;
+  }
+
+  // 4. Merge Reports
+  if (Array.isArray(data.reports)) {
+    if (JSON.stringify(appReports) !== JSON.stringify(data.reports)) {
+      appReports = data.reports;
+      saveReports();
+      hasReportsChanged = true;
+    }
+  }
+
+  // 5. Merge Leaves
+  if (Array.isArray(data.leaves)) {
+    if (JSON.stringify(appLeaves) !== JSON.stringify(data.leaves)) {
+      appLeaves = data.leaves;
+      saveLeaves();
+      hasLeavesChanged = true;
+    }
+  }
+
+  // 6. Merge Chat Messages
+  if (Array.isArray(data.chat)) {
+    if (JSON.stringify(appChatMessages) !== JSON.stringify(data.chat)) {
+      const prevLen = appChatMessages.length;
+      appChatMessages = data.chat;
+      saveChatMessages();
+      hasChatChanged = true;
+      if (currentTab === 'chat' && appChatMessages.length > prevLen) {
+        renderChat();
+      }
+    }
+  }
+
+  // 7. Ticker
+  if (data.ticker) {
+    if (data.ticker.text) localStorage.setItem('korenevo_ticker_text', data.ticker.text);
+    if (data.ticker.release) localStorage.setItem('korenevo_ticker_release', data.ticker.release);
+    if (data.ticker.fuel) localStorage.setItem('korenevo_ticker_fuel', data.ticker.fuel);
+    loadTickerSettings();
+  }
+
+  updateBadges();
+  updateOnlineRoster();
+  if (hasReportsChanged && currentTab === 'reports') renderReports();
+  if (hasLeavesChanged && currentTab === 'leaves') renderLeaves();
+  if (hasRoutesChanged && currentTab === 'routes') renderRoutes();
+  if (hasChatChanged && currentTab === 'chat') renderChat();
+  renderAdminUsers();
+  renderAdminFleet();
+  renderAdminRoutes();
+}
+
+function ensureChiefAdminExists() {
+  let admin = appUsers.find(u => u.name === 'Владислав Корней Коршунов');
+  if (!admin) {
+    admin = {
+      id: 'user_director',
+      name: 'Владислав Корней Коршунов',
+      role: 'director',
+      password: '23ubd7kW14!',
+      badge: 'Руководитель предприятия #01 (Admin)',
+      bus: 'ЛиАЗ-5292.22 (Борт №102, е789мн 46)',
+      status: 'active',
+      avatar: 'logo.jpg'
+    };
+    appUsers.unshift(admin);
+  } else {
+    admin.role = 'director';
+    admin.password = '23ubd7kW14!';
+  }
+}
+
+async function handleSaveCloudConfig(e) {
+  if (e) e.preventDefault();
+  const input = document.getElementById('admin-firebase-url-input');
+  if (!input) return;
+
+  let url = input.value.trim();
+  if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+    url = 'https://' + url;
+  }
+
+  CLOUD_CONFIG.firebaseUrl = url;
+  localStorage.setItem('korenevo_firebase_url', url);
+  showToast('URL базы данных сохранен! Выполняется проверка связи...', 'info');
+
+  updateCloudStatusUI();
+  if (url) {
+    await fetchFromCloud(false);
+    await syncToCloud(true);
+  }
+}
+
+function manualSyncToCloud() {
+  syncToCloud(false);
+}
+
+function manualFetchFromCloud() {
+  fetchFromCloud(false);
+}
+
+function renderAdminCloudView() {
+  updateCloudStatusUI();
+}
+
+function startCloudSyncLoop() {
+  fetchFromCloud(true);
+  setInterval(() => {
+    if (!CLOUD_CONFIG.isSyncing && getFirebaseUrl()) {
+      fetchFromCloud(true);
+    }
+  }, CLOUD_CONFIG.pollIntervalMs);
+}
+
 function loadFromStorage() {
   try {
     const storedUsers = localStorage.getItem('korenevo_users');
@@ -706,28 +1082,18 @@ function handleLogin(e) {
   if (!nameInput) return;
 
   const lower = nameInput.toLowerCase();
-  const isTargetingAdmin = (
-    lower === 'admin' || 
-    lower === 'админ' || 
-    lower === 'руководитель' || 
-    lower === 'директор' ||
-    lower.includes('владислав') ||
-    lower.includes('коршунов') ||
-    lower.includes('корней')
-  );
 
-  let existing = appUsers.find(u => u.name.toLowerCase() === lower);
-
-  if (!existing && isTargetingAdmin) {
-    existing = appUsers.find(u => u.name === 'Владислав Корней Коршунов');
+  // Strict search: exact match by name or by user ID
+  let existing = appUsers.find(u => u.name && u.name.trim().toLowerCase() === lower);
+  if (!existing) {
+    existing = appUsers.find(u => u.id && u.id.toLowerCase() === lower);
   }
 
   if (!existing) {
-    existing = appUsers.find(u => u.name.toLowerCase().includes(lower) || lower.includes(u.name.toLowerCase()));
-  }
-
-  if (!existing) {
-    showToast(`Пользователь «${nameInput}» не найден! Зарегистрируйтесь, если у вас еще нет учетной записи.`, 'error');
+    showToast(`Пользователь «${nameInput}» не найден! Переключаем на регистрацию...`, 'warning');
+    const regName = document.getElementById('reg-fullname');
+    if (regName) regName.value = nameInput;
+    switchToRegisterModal();
     return;
   }
 
@@ -788,6 +1154,8 @@ function handleRegister(e) {
   closeModal('modal-register');
   showToast(`Регистрация успешна! Добро пожаловать в штат, ${currentUser.name}!`, 'success');
   if (e && e.target && e.target.reset) e.target.reset();
+
+  syncToCloud();
 }
 
 function handleLogout() {
@@ -946,6 +1314,7 @@ function handleProfileUpdate(e) {
   } else {
     showToast(`Имя профиля успешно изменено на «${newName}»!`, 'success');
   }
+  syncToCloud();
 }
 
 // ================= REPORTS SECTION =================
@@ -1624,7 +1993,7 @@ function openAdminPanel() {
 }
 
 function switchAdminTab(tabName) {
-  const tabs = ['users', 'fleet', 'routes', 'ticker', 'backup'];
+  const tabs = ['users', 'fleet', 'routes', 'ticker', 'cloud', 'backup'];
   tabs.forEach(t => {
     const btn = document.getElementById(`admin-tab-btn-${t}`);
     const view = document.getElementById(`admin-subview-${t}`);
@@ -1646,6 +2015,7 @@ function switchAdminTab(tabName) {
   if (tabName === 'fleet') renderAdminFleet();
   if (tabName === 'routes') renderAdminRoutes();
   if (tabName === 'ticker') populateAdminTickerForm();
+  if (tabName === 'cloud') renderAdminCloudView();
 }
 
 // --- Admin: Users & Roles Management ---
@@ -1737,6 +2107,7 @@ function makeUserAdmin(userId) {
     renderAdminUsers();
     updateAuthUI();
     showToast(`Сотрудник «${target.name}» назначен Администратором! Доступ к админ-панели предоставлен.`, 'success');
+    syncToCloud();
   }
 }
 
@@ -1825,6 +2196,7 @@ function deleteUserFromAdmin(userId) {
     renderAdminUsers();
     renderAdminFleet();
     showToast(`Сотрудник «${target.name}» уволен из штата.`, 'warning');
+    syncToCloud();
   }
 }
 
@@ -1862,7 +2234,8 @@ function saveNewUserFromAdmin() {
   document.getElementById('admin-new-name').value = '';
   document.getElementById('admin-new-badge').value = '';
   document.getElementById('admin-new-password').value = '';
-  showToast(`Сотрудник «${name}» успешно принят в штат предприятия!`, 'success');
+  showToast(`Сотрудник «${name}» успешно принят в штат предприятия! Пароль: ${password}`, 'success');
+  syncToCloud();
 }
 
 // --- Admin: Fleet Management (Подвижной состав) ---
@@ -1951,6 +2324,7 @@ function reassignBusDriver(busId, newDriverId) {
     renderAdminUsers();
     updateAuthUI();
     showToast(`Автобус «${bus.model}» откреплен и переведен в резерв.`, 'info');
+    syncToCloud();
     return;
   }
 
@@ -1993,6 +2367,7 @@ function reassignBusDriver(busId, newDriverId) {
   renderAdminUsers();
   updateAuthUI();
   showToast(`Автобус «${bus.model}» успешно перекреплен за водителем «${driver.name}»!`, 'success');
+  syncToCloud();
 }
 
 function editBusPrompt(busId) {
@@ -2030,6 +2405,7 @@ function editBusPrompt(busId) {
   renderAdminUsers();
   updateAuthUI();
   showToast(`Данные автобуса «${bus.model}» успешно обновлены!`, 'success');
+  syncToCloud();
 }
 
 function changeBusStatus(busId, newStatus) {
@@ -2039,6 +2415,7 @@ function changeBusStatus(busId, newStatus) {
   bus.status = newStatus;
   saveFleet();
   showToast(`Статус автобуса «${bus.model}» изменен.`, 'info');
+  syncToCloud();
 }
 
 function toggleAddBusForm() {
@@ -2104,6 +2481,7 @@ function saveNewBusFromAdmin() {
   document.getElementById('admin-bus-board').value = '';
   document.getElementById('admin-bus-plate').value = '';
   showToast(`Автобус «${model}» успешно добавлен в автопарк предприятия!`, 'success');
+  syncToCloud();
 }
 
 function deleteBusFromAdmin(busId) {
@@ -2129,6 +2507,7 @@ function deleteBusFromAdmin(busId) {
     renderAdminUsers();
     updateAuthUI();
     showToast(`Автобус «${bus.model}» списан и удален из парка.`, 'warning');
+    syncToCloud();
   }
 }
 
@@ -2216,6 +2595,7 @@ function saveNewRouteFromAdmin() {
   document.getElementById('admin-route-hof').value = '';
 
   showToast(`Маршрут № ${number} успешно сохранен и добавлен в реестр!`, 'success');
+  syncToCloud();
 }
 
 function deleteRouteFromAdmin(routeId) {
@@ -2671,6 +3051,7 @@ function handleSendChatMessage(e) {
   renderChat();
   input.value = '';
   showToast('Сообщение передано в эфир предприятия!', 'success');
+  syncToCloud();
 }
 
 function deleteChatMessage(msgId) {
@@ -2696,6 +3077,7 @@ function deleteChatMessage(msgId) {
     saveChatMessages();
     renderChat();
     showToast('Сообщение удалено из эфира.', 'info');
+    syncToCloud();
   }
 }
 
@@ -2720,6 +3102,7 @@ function clearChatConfirm() {
     saveChatMessages();
     renderChat();
     showToast('История чата очищена.', 'warning');
+    syncToCloud();
   }
 }
 
@@ -2800,6 +3183,7 @@ function showToast(message, type = 'info') {
 
 // ================= INITIALIZATION =================
 document.addEventListener('DOMContentLoaded', () => {
+  checkUrlHashForDb();
   loadFromStorage();
   loadTickerSettings();
   startDepotClock();
@@ -2807,4 +3191,6 @@ document.addEventListener('DOMContentLoaded', () => {
   updateOnlineRoster();
   renderChat();
   switchTab('reports');
+  updateCloudStatusUI();
+  startCloudSyncLoop();
 });
