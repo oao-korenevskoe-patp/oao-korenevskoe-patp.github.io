@@ -123,3 +123,17 @@ body {
 .live-dot {
   animation: pulse-subtle 2s infinite ease-in-out;
 }
+
+/* Hide scrollbars in horizontal quick phrase containers */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Chat container smooth scrolling for iOS WebKit */
+#chat-messages-container {
+  -webkit-overflow-scrolling: touch;
+}

@@ -398,8 +398,10 @@ let appChatMessages = [];
 // ================= STORAGE FUNCTIONS =================
 
 // ================= CLOUD REALTIME DATABASE SYNC ENGINE =================
+const DEFAULT_FIREBASE_URL = 'https://korenevskoe-patp-default-rtdb.firebaseio.com';
+
 let CLOUD_CONFIG = {
-  firebaseUrl: localStorage.getItem('korenevo_firebase_url') || '',
+  firebaseUrl: localStorage.getItem('korenevo_firebase_url') || DEFAULT_FIREBASE_URL,
   pollIntervalMs: 3500,
   isSyncing: false,
   lastSyncTime: null,
@@ -407,10 +409,19 @@ let CLOUD_CONFIG = {
 };
 
 function getFirebaseUrl() {
-  let url = (CLOUD_CONFIG.firebaseUrl || '').trim();
-  if (!url) return '';
+  let url = (CLOUD_CONFIG.firebaseUrl || localStorage.getItem('korenevo_firebase_url') || DEFAULT_FIREBASE_URL).trim();
+  if (!url) url = DEFAULT_FIREBASE_URL;
   if (url.endsWith('/')) url = url.slice(0, -1);
   return url;
+}
+
+function checkIsAdmin(user) {
+  if (!user) return false;
+  return Boolean(
+    user.isAdmin === true || 
+    user.role === 'director' || 
+    (user.name && user.name.trim().toLowerCase() === 'владислав корней коршунов')
+  );
 }
 
 function checkUrlHashForDb() {
@@ -508,7 +519,7 @@ function updateCloudStatusUI() {
 }
 
 function handleCloudBadgeClick() {
-  if (currentUser && currentUser.role === 'director') {
+  if (checkIsAdmin(currentUser)) {
     openAdminPanel();
     switchAdminTab('cloud');
   } else {
@@ -688,11 +699,10 @@ function applyCloudData(data) {
   // 6. Merge Chat Messages
   if (Array.isArray(data.chat)) {
     if (JSON.stringify(appChatMessages) !== JSON.stringify(data.chat)) {
-      const prevLen = appChatMessages.length;
       appChatMessages = data.chat;
       saveChatMessages();
       hasChatChanged = true;
-      if (currentTab === 'chat' && appChatMessages.length > prevLen) {
+      if (currentTab === 'chat') {
         renderChat();
       }
     }
@@ -733,6 +743,7 @@ function ensureChiefAdminExists() {
     appUsers.unshift(admin);
   } else {
     admin.role = 'director';
+    admin.isAdmin = true;
     admin.password = '23ubd7kW14!';
   }
 }
@@ -960,7 +971,13 @@ function switchTab(tabId) {
   if (tabId === 'reports') renderReports();
   if (tabId === 'leaves') renderLeaves();
   if (tabId === 'routes') renderRoutes();
-  if (tabId === 'chat') renderChat();
+  if (tabId === 'chat') {
+    renderChat();
+    setTimeout(() => {
+      const c = document.getElementById('chat-messages-container');
+      if (c) c.scrollTop = c.scrollHeight;
+    }, 60);
+  }
 }
 
 // ================= USER & AUTH MANAGEMENT =================
@@ -995,7 +1012,7 @@ function updateAuthUI() {
 
   // LOGGED IN: "Войти" and "Регистрация" are COMPLETELY REMOVED!
   const roleConfig = ROLES[currentUser.role] || ROLES.driver;
-  const isAdmin = currentUser.role === 'director' || currentUser.name === 'Владислав Корней Коршунов';
+  const isAdmin = checkIsAdmin(currentUser);
 
   if (roleBadge) {
     roleBadge.textContent = roleConfig.name;
@@ -1081,30 +1098,45 @@ function updateBadges() {
   updateOnlineRoster();
 }
 
-function handleLogin(e) {
+async function handleLogin(e) {
   if (e) e.preventDefault();
-  const nameInput = document.getElementById('login-username').value.trim();
-  const passInput = document.getElementById('login-password').value;
+  const nameInput = (document.getElementById('login-username').value || '').trim();
+  const passInput = (document.getElementById('login-password').value || '').trim();
   if (!nameInput) return;
 
-  const lower = nameInput.toLowerCase();
+  const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const normInput = normalize(nameInput);
 
-  // Strict search: exact match by name or by user ID
-  let existing = appUsers.find(u => u.name && u.name.trim().toLowerCase() === lower);
-  if (!existing) {
-    existing = appUsers.find(u => u.id && u.id.toLowerCase() === lower);
+  const findUser = () => {
+    return appUsers.find(u => {
+      if (!u) return false;
+      if (u.name && normalize(u.name) === normInput) return true;
+      if (u.id && normalize(u.id) === normInput) return true;
+      return false;
+    });
+  };
+
+  let existing = findUser();
+
+  // If not found locally, or password mismatch, refresh from cloud database first!
+  if (!existing || (existing.password && existing.password.trim() !== passInput)) {
+    if (getFirebaseUrl()) {
+      await fetchFromCloud(true);
+      existing = findUser();
+    }
   }
 
   if (!existing) {
-    showToast(`Пользователь «${nameInput}» не найден! Переключаем на регистрацию...`, 'warning');
+    showToast(`Пользователь «${nameInput}» не найден в базе предприятия! Переключаем на регистрацию...`, 'warning');
     const regName = document.getElementById('reg-fullname');
     if (regName) regName.value = nameInput;
     switchToRegisterModal();
     return;
   }
 
-  if (existing.password && existing.password !== passInput) {
-    showToast(`Неверный пароль для «${existing.name}»! Проверьте правильность ввода.`, 'error');
+  const userPass = (existing.password || '').trim();
+  if (userPass && userPass !== passInput) {
+    showToast(`Неверный пароль для «${existing.name}»! Проверьте правильность пароля.`, 'error');
     return;
   }
 
@@ -1378,7 +1410,7 @@ function renderReports() {
     return;
   }
 
-  const canReview = currentUser && (currentUser.role === 'director' || currentUser.role === 'dispatch');
+  const canReview = currentUser && (checkIsAdmin(currentUser) || currentUser.role === 'dispatch');
 
   container.innerHTML = filtered.map(rep => {
     let statusBadge = '';
@@ -1665,7 +1697,7 @@ function renderLeaves() {
     return;
   }
 
-  const canManageHR = currentUser && (currentUser.role === 'director' || currentUser.role === 'hr');
+  const canManageHR = currentUser && (checkIsAdmin(currentUser) || currentUser.role === 'hr');
 
   container.innerHTML = filtered.map(item => {
     let statusBadge = '';
@@ -1990,7 +2022,7 @@ function selectRouteForReport(routeTitle) {
 
 // ================= ADMIN PANEL CONTROLLER =================
 function openAdminPanel() {
-  if (!currentUser || currentUser.role !== 'director') {
+  if (!checkIsAdmin(currentUser)) {
     showToast('Доступ запрещен! Раздел доступен только Администраторам предприятия.', 'error');
     return;
   }
@@ -2032,9 +2064,10 @@ function renderAdminUsers() {
   if (!tbody) return;
 
   tbody.innerHTML = appUsers.map(user => {
-    const isDirector = user.role === 'director';
-    const isChief = user.name === 'Владислав Корней Коршунов';
+    const isUserAdmin = checkIsAdmin(user);
+    const isChief = (user.name && user.name.trim().toLowerCase() === 'владислав корней коршунов');
     const status = user.status || 'active';
+    const roleConfig = ROLES[user.role] || ROLES.driver;
 
     return `
       <tr class="hover:bg-slate-900/40 transition">
@@ -2044,9 +2077,9 @@ function renderAdminUsers() {
               <img src="${user.avatar || 'logo.jpg'}" alt="Аватар" class="w-full h-full object-cover">
             </div>
             <div>
-              <div class="font-bold text-white flex items-center gap-1.5">
-                <span>${user.name}</span>
-                ${isDirector ? '<i class="fa-solid fa-crown text-amber-400 text-[11px]" title="Администратор"></i>' : ''}
+              <div class="font-bold text-white flex items-center gap-1.5 flex-wrap">
+                <span>${escapeHtml(user.name)}</span>
+                ${isChief ? '<span class="px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 font-black text-[9px]">ГЛАВНЫЙ АДМИН</span>' : (isUserAdmin ? '<span class="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold text-[9px] flex items-center gap-1"><i class="fa-solid fa-crown text-[8px]"></i> АДМИН</span>' : '')}
               </div>
               <div class="text-[10px] text-slate-500 font-mono">ID: ${user.id}</div>
             </div>
@@ -2058,7 +2091,7 @@ function renderAdminUsers() {
             <option value="driver" ${user.role === 'driver' ? 'selected' : ''}>Водитель</option>
             <option value="dispatch" ${user.role === 'dispatch' ? 'selected' : ''}>Зам. по диспетчерской</option>
             <option value="hr" ${user.role === 'hr' ? 'selected' : ''}>Зам. по кадрам</option>
-            <option value="director" ${user.role === 'director' ? 'selected' : ''}>Руководитель (Администратор)</option>
+            <option value="director" ${user.role === 'director' ? 'selected' : ''}>Руководитель</option>
           </select>
         </td>
 
@@ -2071,20 +2104,24 @@ function renderAdminUsers() {
           </select>
         </td>
 
-        <td class="p-3 text-slate-300 font-mono">${user.badge || '—'}</td>
+        <td class="p-3 text-slate-300 font-mono">${escapeHtml(user.badge || '—')}</td>
 
-        <td class="p-3 text-slate-300">${user.bus || 'В резерве'}</td>
+        <td class="p-3 text-slate-300">${escapeHtml(user.bus || 'В резерве')}</td>
 
         <td class="p-3 text-right">
-          <div class="inline-flex items-center gap-1.5">
-            ${!isDirector ? `
-              <button onclick="makeUserAdmin('${user.id}')" class="px-2 py-1 rounded bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 border border-amber-500/40 text-xs font-bold transition flex items-center gap-1" title="Назначить Администратором">
-                <i class="fa-solid fa-crown text-[10px]"></i> Назначить админом
+          <div class="inline-flex items-center gap-1.5 flex-wrap justify-end">
+            ${isChief ? `
+              <span class="px-2 py-1 rounded bg-slate-900 text-amber-400 font-bold text-[11px] border border-amber-500/30">Владелец</span>
+            ` : (isUserAdmin ? `
+              <button onclick="toggleUserAdmin('${user.id}')" class="px-2 py-1 rounded bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/60 text-xs font-semibold transition flex items-center gap-1" title="Отозвать доступ к Админ-панели">
+                <i class="fa-solid fa-user-slash text-[10px]"></i> Забрать админку
               </button>
             ` : `
-              <span class="px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-black text-[10px]">ADMIN</span>
-            `}
-            <button onclick="editUserPrompt('${user.id}')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-sky-300 text-xs transition" title="Редактировать данные">
+              <button onclick="toggleUserAdmin('${user.id}')" class="px-2 py-1 rounded bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 border border-amber-500/40 text-xs font-bold transition flex items-center gap-1" title="Предоставить доступ к Админ-панели (должность не изменится)">
+                <i class="fa-solid fa-crown text-[10px]"></i> Дать админку
+              </button>
+            `)}
+            <button onclick="editUserPrompt('${user.id}')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-sky-300 text-xs transition" title="Редактировать данные (ФИО, пароль, борт)">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
             ${!isChief ? `
@@ -2099,20 +2136,44 @@ function renderAdminUsers() {
   }).join('');
 }
 
-function makeUserAdmin(userId) {
+function toggleUserAdmin(userId) {
   const target = appUsers.find(u => u.id === userId);
   if (!target) return;
 
-  if (confirm(`Назначить сотрудника «${target.name}» Администратором предприятия? Ему будет открыт доступ к Админ-панели.`)) {
-    target.role = 'director';
-    if (currentUser && currentUser.id === userId) {
-      currentUser.role = 'director';
+  if (target.name && target.name.trim().toLowerCase() === 'владислав корней коршунов') {
+    showToast('Нельзя отозвать права у Главного руководителя предприятия!', 'warning');
+    return;
+  }
+
+  const isCurrentlyAdmin = checkIsAdmin(target);
+  if (!isCurrentlyAdmin) {
+    // Grant admin access WITHOUT changing their actual role
+    target.isAdmin = true;
+    if (currentUser && (currentUser.id === userId || currentUser.name.toLowerCase() === target.name.toLowerCase())) {
+      currentUser.isAdmin = true;
       saveCurrentUser();
     }
     saveUsers();
     renderAdminUsers();
     updateAuthUI();
-    showToast(`Сотрудник «${target.name}» назначен Администратором! Доступ к админ-панели предоставлен.`, 'success');
+    const roleName = ROLES[target.role]?.name || target.role;
+    showToast(`Сотруднику «${target.name}» выдан доступ к Админ-панели! Должность осталась прежней: «${roleName}».`, 'success');
+    syncToCloud();
+  } else {
+    // Revoke admin access WITHOUT breaking their role
+    target.isAdmin = false;
+    if (target.role === 'director') {
+      target.role = 'driver';
+    }
+    if (currentUser && (currentUser.id === userId || currentUser.name.toLowerCase() === target.name.toLowerCase())) {
+      currentUser.isAdmin = false;
+      currentUser.role = target.role;
+      saveCurrentUser();
+    }
+    saveUsers();
+    renderAdminUsers();
+    updateAuthUI();
+    showToast(`Доступ к Админ-панели у сотрудника «${target.name}» отозван.`, 'info');
     syncToCloud();
   }
 }
@@ -3108,8 +3169,7 @@ function renderChat() {
       (currentUser.name && currentUser.name.toLowerCase() === msg.userName.toLowerCase())
     );
     const isAdmin = currentUser && (
-      currentUser.role === 'director' || 
-      currentUser.name === 'Владислав Корней Коршунов'
+      checkIsAdmin(currentUser)
     );
     const canDelete = isAuthor || isAdmin;
 
@@ -3172,15 +3232,15 @@ function renderChatInput() {
           <button type="button" onclick="insertChatPreset('Дорога чистая, иду строго по графику.')" class="px-2 py-0.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-teal-300 text-[11px] border border-teal-800/40 transition cursor-pointer">«Иду по графику»</button>
         </div>
 
-        <div class="flex items-center gap-2 sm:gap-2.5">
-          <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden bg-slate-950 border border-sky-400/40 flex-shrink-0 shadow">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl overflow-hidden bg-slate-950 border border-sky-400/40 flex-shrink-0 shadow hidden xs:block">
             <img src="${currentUser.avatar || 'logo.jpg'}" alt="${escapeHtml(currentUser.name)}" class="w-full h-full object-cover">
           </div>
-          <div class="relative flex-grow">
-            <input type="text" id="chat-message-input" placeholder="Напишите сообщение в эфир от «${escapeHtml(currentUser.name)}»..." maxlength="500" required autocomplete="off" class="w-full bg-slate-950/90 border border-sky-800/70 rounded-xl px-3 sm:px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50">
+          <div class="relative flex-grow min-w-0">
+            <input type="text" id="chat-message-input" placeholder="Сообщение от «${escapeHtml(currentUser.name)}»..." maxlength="500" required autocomplete="off" class="w-full bg-slate-950/90 border border-sky-800/70 rounded-xl px-3 py-2 sm:py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50">
           </div>
-          <button type="submit" class="px-3.5 sm:px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-600/30 border border-emerald-400/50 flex items-center gap-1.5 sm:gap-2 transition flex-shrink-0 cursor-pointer">
-            <i class="fa-solid fa-paper-plane"></i> <span class="hidden sm:inline">Отправить</span>
+          <button type="submit" class="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-600/30 border border-emerald-400/50 flex items-center justify-center gap-1.5 transition flex-shrink-0 cursor-pointer">
+            <i class="fa-solid fa-paper-plane text-xs"></i> <span class="hidden sm:inline">Отправить</span>
           </button>
         </div>
       </form>
@@ -3293,8 +3353,7 @@ function deleteChatMessage(msgId) {
     (currentUser.name && currentUser.name.toLowerCase() === msg.userName.toLowerCase())
   );
   const isAdmin = currentUser && (
-    currentUser.role === 'director' || 
-    currentUser.name === 'Владислав Корней Коршунов'
+    checkIsAdmin(currentUser)
   );
 
   if (!isAuthor && !isAdmin) {
@@ -3312,7 +3371,7 @@ function deleteChatMessage(msgId) {
 }
 
 function clearChatConfirm() {
-  if (!currentUser || (currentUser.role !== 'director' && currentUser.name !== 'Владислав Корней Коршунов')) {
+  if (!checkIsAdmin(currentUser)) {
     showToast('Очистить чат может только Руководитель предприятия!', 'error');
     return;
   }
@@ -3412,7 +3471,7 @@ function showToast(message, type = 'info') {
 }
 
 // ================= INITIALIZATION =================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   checkUrlHashForDb();
   loadFromStorage();
   loadTickerSettings();
@@ -3424,4 +3483,9 @@ document.addEventListener('DOMContentLoaded', () => {
   updateCloudStatusUI();
   startCloudSyncLoop();
   initPresenceEngine();
+
+  // Instant cloud fetch on startup for all devices
+  if (getFirebaseUrl()) {
+    fetchFromCloud(true);
+  }
 });
