@@ -607,6 +607,7 @@ async function fetchFromCloud(isSilent = true) {
       CLOUD_CONFIG.status = 'online';
       CLOUD_CONFIG.lastSyncTime = Date.now();
     }
+    fetchCloudPresence();
   } catch (err) {
     console.warn('Fetch from cloud warning:', err);
     if (CLOUD_CONFIG.status !== 'online') {
@@ -1108,7 +1109,7 @@ function handleLogin(e) {
   renderReports();
   renderLeaves();
   renderChat();
-  updateOnlineRoster();
+  runPresenceCycle();
   closeModal('modal-login');
   showToast(`Вход выполнен! Добро пожаловать, ${currentUser.name}!`, 'success');
   if (e && e.target && e.target.reset) e.target.reset();
@@ -1150,7 +1151,7 @@ function handleRegister(e) {
   renderReports();
   renderLeaves();
   renderChat();
-  updateOnlineRoster();
+  runPresenceCycle();
   closeModal('modal-register');
   showToast(`Регистрация успешна! Добро пожаловать в штат, ${currentUser.name}!`, 'success');
   if (e && e.target && e.target.reset) e.target.reset();
@@ -1306,7 +1307,7 @@ function handleProfileUpdate(e) {
   renderReports();
   renderLeaves();
   renderChat();
-  updateOnlineRoster();
+  runPresenceCycle();
   closeModal('modal-edit-profile');
 
   if (newPass) {
@@ -2749,75 +2750,219 @@ function resetEnterpriseData() {
 }
 
 
-// ================= ONLINE PERSONNEL ROSTER =================
+// ================= REAL PRESENCE & ONLINE SYSTEM =================
+const CURRENT_SESSION_ID = (function() {
+  try {
+    let sid = sessionStorage.getItem('patp_session_id');
+    if (!sid) {
+      sid = 'sess_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 9);
+      sessionStorage.setItem('patp_session_id', sid);
+    }
+    return sid;
+  } catch (e) {
+    return 'sess_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 9);
+  }
+})();
+
+let cloudPresenceMap = {};
+
+function getMyPresencePayload() {
+  return {
+    sessionId: CURRENT_SESSION_ID,
+    userId: currentUser ? currentUser.id : null,
+    name: currentUser ? currentUser.name : 'Посетитель сайта',
+    role: currentUser ? (currentUser.role || 'driver') : 'guest',
+    avatar: currentUser ? (currentUser.avatar || 'logo.jpg') : 'logo.jpg',
+    bus: currentUser ? (currentUser.bus || 'В депо') : 'Сайт ПАТП',
+    statusText: currentUser ? 'На связи' : 'Просмотр сайта',
+    lastSeen: Date.now(),
+    isGuest: !currentUser
+  };
+}
+
+// Local storage presence tracking (works across browser tabs & windows)
+function updateLocalPresence(isExiting = false) {
+  try {
+    const raw = localStorage.getItem('korenevo_presence');
+    const presence = raw ? JSON.parse(raw) : {};
+    const now = Date.now();
+
+    if (isExiting) {
+      delete presence[CURRENT_SESSION_ID];
+    } else {
+      presence[CURRENT_SESSION_ID] = getMyPresencePayload();
+    }
+
+    // Purge dead sessions older than 25 seconds
+    for (const sid in presence) {
+      if (!presence[sid] || !presence[sid].lastSeen || (now - presence[sid].lastSeen > 25000)) {
+        delete presence[sid];
+      }
+    }
+
+    localStorage.setItem('korenevo_presence', JSON.stringify(presence));
+    return presence;
+  } catch (e) {
+    return {};
+  }
+}
+
+// Cloud presence heartbeat to Firebase Realtime Database
+async function sendCloudPresenceHeartbeat(isExiting = false) {
+  const baseUrl = getFirebaseUrl();
+  if (!baseUrl) return;
+
+  try {
+    let endpoint = baseUrl.endsWith('.json') ? baseUrl.slice(0, -5) : baseUrl;
+    endpoint = `${endpoint}/presence/${CURRENT_SESSION_ID}.json`;
+
+    if (isExiting) {
+      if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+        const blob = new Blob(['null'], { type: 'application/json' });
+        navigator.sendBeacon(endpoint, blob);
+      } else {
+        fetch(endpoint, { method: 'DELETE', keepalive: true }).catch(() => {});
+      }
+    } else {
+      await fetch(endpoint, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(getMyPresencePayload())
+      });
+    }
+  } catch (e) {
+    // Silent fail
+  }
+}
+
+// Fetch all cloud presence records from Firebase
+async function fetchCloudPresence() {
+  const baseUrl = getFirebaseUrl();
+  if (!baseUrl) return;
+
+  try {
+    let endpoint = baseUrl.endsWith('.json') ? baseUrl.slice(0, -5) : baseUrl;
+    endpoint = `${endpoint}/presence.json`;
+
+    const res = await fetch(endpoint, { headers: { 'Accept': 'application/json' } });
+    if (!res.ok) return;
+
+    const data = await res.json();
+    if (data && typeof data === 'object') {
+      const now = Date.now();
+      const valid = {};
+      for (const [sid, record] of Object.entries(data)) {
+        if (record && typeof record === 'object' && record.lastSeen && (now - record.lastSeen < 30000)) {
+          valid[sid] = record;
+        }
+      }
+      cloudPresenceMap = valid;
+      updateOnlineRoster();
+    }
+  } catch (e) {
+    // Silent fail
+  }
+}
+
+function runPresenceCycle() {
+  updateLocalPresence();
+  sendCloudPresenceHeartbeat();
+  fetchCloudPresence();
+  updateOnlineRoster();
+}
+
+function handlePresenceExit() {
+  updateLocalPresence(true);
+  sendCloudPresenceHeartbeat(true);
+}
+
 function getOnlinePersonnel() {
-  const onlineList = [];
-  
-  if (currentUser) {
-    onlineList.push({
-      id: currentUser.id,
-      name: currentUser.name,
-      role: currentUser.role || 'driver',
-      avatar: currentUser.avatar || 'logo.jpg',
-      bus: currentUser.bus || 'В депо',
-      statusText: 'На связи (Вы)',
-      isCurrent: true
-    });
+  const now = Date.now();
+  const allSessions = [];
+
+  // 1. Local presence sessions
+  const localPresence = updateLocalPresence();
+  for (const sid in localPresence) {
+    if (now - localPresence[sid].lastSeen < 25000) {
+      allSessions.push(localPresence[sid]);
+    }
   }
 
-  const rosterData = [
-    {
-      name: 'Владислав Корней Коршунов',
-      role: 'director',
-      avatar: 'logo.jpg',
-      bus: 'ЛиАЗ-5292.22 (Борт №102, е789мн 46)',
-      statusText: 'В депо / Главный диспетчер'
-    },
-    {
-      name: 'Смирнов Виктор Михайлович',
-      role: 'dispatch',
-      avatar: 'logo.jpg',
-      bus: 'Диспетчерский пульт депо',
-      statusText: 'На дежурстве (Радиоканал 1)'
-    },
-    {
-      name: 'Мельников Алексей Романович',
-      role: 'driver',
-      avatar: 'logo.jpg',
-      bus: 'ЛиАЗ-5256.26 (Борт №104, а145кх 46)',
-      statusText: 'На линии: Маршрут №104'
-    },
-    {
-      name: 'Павлов Сергей Александрович',
-      role: 'driver',
-      avatar: 'logo.jpg',
-      bus: 'ПАЗ-32053 (Борт №128, в332ор 46)',
-      statusText: 'На линии: Маршрут №1'
-    },
-    {
-      name: 'Ковалев Дмитрий Игоревич',
-      role: 'hr',
-      avatar: 'logo.jpg',
-      bus: 'Отдел кадров',
-      statusText: 'В сети (Кадровый учет)'
+  // 2. Cloud presence sessions (Firebase)
+  for (const sid in cloudPresenceMap) {
+    if (!allSessions.some(s => s.sessionId === sid)) {
+      if (now - cloudPresenceMap[sid].lastSeen < 30000) {
+        allSessions.push(cloudPresenceMap[sid]);
+      }
     }
-  ];
+  }
 
-  rosterData.forEach(person => {
-    if (!currentUser || currentUser.name.toLowerCase() !== person.name.toLowerCase()) {
-      onlineList.push({
-        id: 'online_' + person.name,
-        name: person.name,
-        role: person.role,
-        avatar: person.avatar,
-        bus: person.bus,
-        statusText: person.statusText,
-        isCurrent: false
-      });
+  // Ensure current active session is always in list
+  if (!allSessions.some(s => s.sessionId === CURRENT_SESSION_ID)) {
+    allSessions.push(getMyPresencePayload());
+  }
+
+  // Deduplicate:
+  // - Logged-in users deduplicated by userId (so multiple tabs = 1 user online)
+  // - Unregistered visitors (guests) tracked by unique sessionId
+  const result = [];
+  const seenUserIds = new Set();
+  const seenGuests = new Set();
+
+  allSessions.forEach(session => {
+    const isCurrent = (session.sessionId === CURRENT_SESSION_ID);
+
+    if (session.userId) {
+      // Logged in employee
+      if (!seenUserIds.has(session.userId)) {
+        seenUserIds.add(session.userId);
+        result.push({
+          id: session.userId,
+          sessionId: session.sessionId,
+          name: session.name,
+          role: session.role || 'driver',
+          avatar: session.avatar || 'logo.jpg',
+          bus: session.bus || 'В депо',
+          statusText: isCurrent ? 'На связи (Вы)' : (session.statusText || 'В сети'),
+          isCurrent: isCurrent || (currentUser && currentUser.id === session.userId),
+          isGuest: false
+        });
+      } else if (isCurrent) {
+        const existing = result.find(r => r.id === session.userId);
+        if (existing) {
+          existing.isCurrent = true;
+          existing.statusText = 'На связи (Вы)';
+        }
+      }
+    } else {
+      // Guest visitor
+      if (!seenGuests.has(session.sessionId)) {
+        seenGuests.add(session.sessionId);
+        result.push({
+          id: session.sessionId,
+          sessionId: session.sessionId,
+          name: isCurrent ? 'Посетитель сайта (Вы)' : 'Посетитель сайта',
+          role: 'guest',
+          avatar: 'logo.jpg',
+          bus: 'Сайт ПАТП',
+          statusText: isCurrent ? 'Просмотр сайта (Вы)' : 'Просмотр сайта',
+          isCurrent: isCurrent,
+          isGuest: true
+        });
+      }
     }
   });
 
-  return onlineList;
+  // Sort: current user first, then employees by name, then guests
+  result.sort((a, b) => {
+    if (a.isCurrent) return -1;
+    if (b.isCurrent) return 1;
+    if (!a.isGuest && b.isGuest) return -1;
+    if (a.isGuest && !b.isGuest) return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  return result;
 }
 
 function updateOnlineRoster() {
@@ -2836,8 +2981,22 @@ function updateOnlineRoster() {
   const container = document.getElementById('online-users-roster');
   if (!container) return;
 
+  if (personnel.length === 0) {
+    container.innerHTML = `
+      <div class="text-center py-6 text-slate-400 text-xs">
+        <i class="fa-solid fa-user-slash text-2xl text-slate-600 mb-2"></i>
+        <p>Никого нет в сети</p>
+      </div>
+    `;
+    return;
+  }
+
   container.innerHTML = personnel.map(p => {
-    const roleConfig = ROLES[p.role] || ROLES.driver;
+    const roleConfig = ROLES[p.role] || (p.isGuest ? {
+      name: 'Гость',
+      badgeClass: 'bg-slate-800 text-slate-300 border-slate-700'
+    } : ROLES.driver);
+
     return `
       <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/80 border ${p.isCurrent ? 'border-emerald-500/50 bg-emerald-950/25' : 'border-sky-900/50'}">
         <div class="flex items-center space-x-3 min-w-0">
@@ -2851,7 +3010,7 @@ function updateOnlineRoster() {
               ${p.isCurrent ? '<span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">Вы</span>' : ''}
             </div>
             <div class="text-[11px] text-slate-400 truncate flex items-center gap-1.5 mt-0.5">
-              <i class="fa-solid fa-bus text-sky-400"></i> ${escapeHtml(p.bus)}
+              <i class="fa-solid ${p.isGuest ? 'fa-globe text-emerald-400' : 'fa-bus text-sky-400'}"></i> ${escapeHtml(p.bus)}
             </div>
           </div>
         </div>
@@ -2870,8 +3029,28 @@ function updateOnlineRoster() {
 }
 
 function openOnlineModal() {
-  updateOnlineRoster();
+  runPresenceCycle();
   openModal('modal-online-users');
+}
+
+function initPresenceEngine() {
+  runPresenceCycle();
+  setInterval(runPresenceCycle, 6000);
+
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'korenevo_presence') {
+      updateOnlineRoster();
+    }
+  });
+
+  window.addEventListener('beforeunload', handlePresenceExit);
+  window.addEventListener('pagehide', handlePresenceExit);
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      runPresenceCycle();
+    }
+  });
 }
 
 // ================= GENERAL CHAT (ОБЩИЙ ЧАТ ПРЕДПРИЯТИЯ) =================
@@ -3193,4 +3372,5 @@ document.addEventListener('DOMContentLoaded', () => {
   switchTab('reports');
   updateCloudStatusUI();
   startCloudSyncLoop();
+  initPresenceEngine();
 });
