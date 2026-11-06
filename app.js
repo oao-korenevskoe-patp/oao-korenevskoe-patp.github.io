@@ -1038,6 +1038,11 @@ function updateAuthUI() {
     </div>
   `;
 
+  const chatInputContainer = document.getElementById('chat-input-container');
+  if (chatInputContainer) {
+    chatInputContainer.dataset.renderedMode = '';
+  }
+
   updateBadges();
   renderChatInput();
   updateOnlineRoster();
@@ -3090,8 +3095,14 @@ function renderChat() {
     return;
   }
 
+  const isScrolledToBottom = (container.scrollHeight - container.scrollTop - container.clientHeight) < 150;
+
   container.innerHTML = appChatMessages.map(msg => {
-    const roleConfig = ROLES[msg.userRole] || ROLES.driver;
+    const roleConfig = ROLES[msg.userRole] || (msg.userRole === 'guest' ? {
+      name: 'Гость',
+      badgeClass: 'bg-slate-800 text-slate-300 border-slate-700'
+    } : ROLES.driver);
+
     const isAuthor = currentUser && (
       (currentUser.id && currentUser.id === msg.userId) ||
       (currentUser.name && currentUser.name.toLowerCase() === msg.userName.toLowerCase())
@@ -3132,12 +3143,21 @@ function renderChat() {
     `;
   }).join('');
 
-  container.scrollTop = container.scrollHeight;
+  if (isScrolledToBottom) {
+    container.scrollTop = container.scrollHeight;
+  }
 }
 
 function renderChatInput() {
   const container = document.getElementById('chat-input-container');
   if (!container) return;
+
+  const currentMode = currentUser ? `user_${currentUser.id}` : 'guest';
+  if (container.dataset.renderedMode === currentMode) {
+    // Input is already in correct mode - do NOT re-render innerHTML so user can type undisturbed!
+    return;
+  }
+  container.dataset.renderedMode = currentMode;
 
   if (currentUser) {
     container.innerHTML = `
@@ -3152,39 +3172,45 @@ function renderChatInput() {
           <button type="button" onclick="insertChatPreset('Дорога чистая, иду строго по графику.')" class="px-2 py-0.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-teal-300 text-[11px] border border-teal-800/40 transition cursor-pointer">«Иду по графику»</button>
         </div>
 
-        <div class="flex items-center gap-2.5">
-          <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden bg-slate-950 border border-sky-400/40 flex-shrink-0">
+        <div class="flex items-center gap-2 sm:gap-2.5">
+          <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden bg-slate-950 border border-sky-400/40 flex-shrink-0 shadow">
             <img src="${currentUser.avatar || 'logo.jpg'}" alt="${escapeHtml(currentUser.name)}" class="w-full h-full object-cover">
           </div>
           <div class="relative flex-grow">
-            <input type="text" id="chat-message-input" placeholder="Напишите сообщение в общий чат от имени «${escapeHtml(currentUser.name)}»..." maxlength="500" required autocomplete="off" class="w-full bg-slate-950/90 border border-sky-800/70 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50">
+            <input type="text" id="chat-message-input" placeholder="Напишите сообщение в эфир от «${escapeHtml(currentUser.name)}»..." maxlength="500" required autocomplete="off" class="w-full bg-slate-950/90 border border-sky-800/70 rounded-xl px-3 sm:px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50">
           </div>
-          <button type="submit" class="px-3.5 sm:px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-600/30 border border-emerald-400/50 flex items-center gap-2 transition flex-shrink-0 cursor-pointer">
+          <button type="submit" class="px-3.5 sm:px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-600/30 border border-emerald-400/50 flex items-center gap-1.5 sm:gap-2 transition flex-shrink-0 cursor-pointer">
             <i class="fa-solid fa-paper-plane"></i> <span class="hidden sm:inline">Отправить</span>
           </button>
         </div>
       </form>
     `;
   } else {
+    const savedGuestName = localStorage.getItem('korenevo_guest_chat_name') || '';
     container.innerHTML = `
-      <div class="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-950/80 border border-sky-900/60 text-center sm:text-left">
-        <div class="flex items-center space-x-3">
-          <div class="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center flex-shrink-0">
-            <i class="fa-solid fa-lock text-sm"></i>
-          </div>
-          <div class="text-xs text-slate-300">
-            Для отправки сообщений в общий радиоканал предприятия войдите под своей учетной записью или зарегистрируйтесь.
+      <form id="chat-send-form" onsubmit="handleSendChatMessage(event)" class="space-y-2.5">
+        <div class="flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-400">
+          <span class="flex items-center gap-1.5"><i class="fa-solid fa-user-clock text-amber-400"></i> Режим гостя (сообщения отправляются сразу без пароля):</span>
+          <div class="flex items-center gap-1.5">
+            <button type="button" onclick="openModal('modal-login')" class="text-sky-400 hover:underline font-semibold cursor-pointer">Войти в аккаунт</button>
+            <span>или</span>
+            <button type="button" onclick="openModal('modal-register')" class="text-emerald-400 hover:underline font-semibold cursor-pointer">Регистрация</button>
           </div>
         </div>
-        <div class="flex items-center gap-2 flex-shrink-0">
-          <button onclick="openModal('modal-login')" class="px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs transition shadow-md cursor-pointer">
-            Войти
-          </button>
-          <button onclick="openModal('modal-register')" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-300 font-bold text-xs border border-sky-700/60 transition cursor-pointer">
-            Регистрация
+
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <div class="relative w-full sm:w-44 flex-shrink-0">
+            <i class="fa-solid fa-user text-slate-500 text-xs absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input type="text" id="chat-guest-name" value="${escapeHtml(savedGuestName)}" placeholder="Ваше имя / Позывной" maxlength="35" class="w-full bg-slate-950/90 border border-sky-800/70 rounded-xl pl-8 pr-3 py-2 sm:py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-sky-500/50">
+          </div>
+          <div class="relative flex-grow">
+            <input type="text" id="chat-message-input" placeholder="Напишите сообщение в общий чат..." maxlength="500" required autocomplete="off" class="w-full bg-slate-950/90 border border-sky-800/70 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50">
+          </div>
+          <button type="submit" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-600/30 border border-emerald-400/50 flex items-center justify-center gap-2 transition flex-shrink-0 cursor-pointer">
+            <i class="fa-solid fa-paper-plane"></i> <span>Отправить</span>
           </button>
         </div>
-      </div>
+      </form>
     `;
   }
 }
@@ -3199,11 +3225,6 @@ function insertChatPreset(phrase) {
 
 function handleSendChatMessage(e) {
   if (e) e.preventDefault();
-  if (!currentUser) {
-    showToast('Пожалуйста, войдите в систему для отправки сообщений!', 'warning');
-    openModal('modal-login');
-    return;
-  }
 
   const input = document.getElementById('chat-message-input');
   if (!input) return;
@@ -3211,24 +3232,54 @@ function handleSendChatMessage(e) {
   const text = input.value.trim();
   if (!text) return;
 
+  let senderName = '';
+  let senderRole = 'driver';
+  let senderAvatar = 'logo.jpg';
+  let senderUserId = '';
+
+  if (currentUser) {
+    senderName = currentUser.name;
+    senderRole = currentUser.role || 'driver';
+    senderAvatar = currentUser.avatar || 'logo.jpg';
+    senderUserId = currentUser.id || 'user_' + Date.now();
+  } else {
+    const guestInput = document.getElementById('chat-guest-name');
+    let guestName = guestInput ? guestInput.value.trim() : '';
+    if (!guestName) {
+      guestName = localStorage.getItem('korenevo_guest_chat_name') || 'Посетитель сайта';
+    } else {
+      localStorage.setItem('korenevo_guest_chat_name', guestName);
+    }
+    senderName = guestName;
+    senderRole = 'guest';
+    senderAvatar = 'logo.jpg';
+    senderUserId = 'guest_' + Date.now();
+  }
+
   const now = new Date();
   const dateStr = `${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()}`;
   const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
   const newMsg = {
-    id: 'msg_' + Date.now(),
-    userId: currentUser.id || 'user_' + Date.now(),
-    userName: currentUser.name,
-    userRole: currentUser.role || 'driver',
-    userAvatar: currentUser.avatar || 'logo.jpg',
+    id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+    userId: senderUserId,
+    userName: senderName,
+    userRole: senderRole,
+    userAvatar: senderAvatar,
     text: text,
     timestamp: `${dateStr} ${timeStr}`
   };
 
+  input.value = '';
   appChatMessages.push(newMsg);
   saveChatMessages();
   renderChat();
-  input.value = '';
+
+  const chatContainer = document.getElementById('chat-messages-container');
+  if (chatContainer) {
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+
   showToast('Сообщение передано в эфир предприятия!', 'success');
   syncToCloud();
 }
