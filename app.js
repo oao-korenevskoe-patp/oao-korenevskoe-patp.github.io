@@ -90,6 +90,16 @@ const DEFAULT_USERS = [
     avatar: 'logo.jpg'
   },
   {
+    id: 'user_1793960570594',
+    name: 'Владислав Петрушкин',
+    role: 'hr',
+    password: '123',
+    badge: 'Отдел кадров #04',
+    bus: 'В резерве',
+    status: 'active',
+    avatar: 'logo.jpg'
+  },
+  {
     id: 'user_driver_1',
     name: 'Григорьев Михаил Дмитриевич',
     role: 'driver',
@@ -395,6 +405,35 @@ let appRoutes = [];
 let appFleet = [];
 let appChatMessages = [];
 
+
+// ================= DELETION TRACKING HELPERS =================
+function getDeletedIds(key) {
+  try {
+    const raw = localStorage.getItem('korenevo_deleted_' + key);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function addDeletedId(key, id) {
+  try {
+    const list = getDeletedIds(key);
+    if (!list.includes(id)) {
+      list.push(id);
+      localStorage.setItem('korenevo_deleted_' + key, JSON.stringify(list));
+    }
+  } catch (e) {}
+}
+
+function removeDeletedId(key, id) {
+  try {
+    let list = getDeletedIds(key);
+    list = list.filter(item => item !== id);
+    localStorage.setItem('korenevo_deleted_' + key, JSON.stringify(list));
+  } catch (e) {}
+}
+
 // ================= STORAGE FUNCTIONS =================
 
 // ================= CLOUD REALTIME DATABASE SYNC ENGINE =================
@@ -557,7 +596,173 @@ async function syncToCloud(isSilent = true) {
 
   try {
     const endpoint = baseUrl.endsWith('.json') ? baseUrl : `${baseUrl}/patp_db.json`;
-    const payload = getEnterpriseStatePayload();
+
+    // 1. Pre-fetch latest cloud state to merge bidirectionally
+    let cloudData = null;
+    try {
+      const getRes = await fetch(endpoint, { headers: { 'Accept': 'application/json' } });
+      if (getRes.ok) {
+        cloudData = await getRes.json();
+      }
+    } catch (e) {
+      console.warn('Pre-sync fetch warning:', e);
+    }
+
+    const deletedUsers = getDeletedIds('users');
+    const deletedChat = getDeletedIds('chat');
+    const deletedReports = getDeletedIds('reports');
+    const deletedLeaves = getDeletedIds('leaves');
+    const deletedFleet = getDeletedIds('fleet');
+    const deletedRoutes = getDeletedIds('routes');
+
+    // 2. SMART MERGE USERS (Union by ID and by normalized name)
+    const userMap = new Map();
+    if (cloudData && Array.isArray(cloudData.users)) {
+      cloudData.users.forEach(u => {
+        if (u && u.id && !deletedUsers.includes(u.id)) {
+          userMap.set(u.id, u);
+        }
+      });
+    }
+    appUsers.forEach(u => {
+      if (u && u.id && !deletedUsers.includes(u.id)) {
+        const inCloud = userMap.get(u.id);
+        if (inCloud) {
+          userMap.set(u.id, { ...inCloud, ...u });
+        } else {
+          userMap.set(u.id, u);
+        }
+      }
+    });
+    appUsers = Array.from(userMap.values());
+    ensureChiefAdminExists();
+    saveUsers();
+
+    // 3. SMART MERGE CHAT (Union by ID)
+    const chatMap = new Map();
+    if (cloudData && Array.isArray(cloudData.chat)) {
+      cloudData.chat.forEach(m => {
+        if (m && m.id && !deletedChat.includes(m.id)) {
+          chatMap.set(m.id, m);
+        }
+      });
+    }
+    appChatMessages.forEach(m => {
+      if (m && m.id && !deletedChat.includes(m.id)) {
+        chatMap.set(m.id, m);
+      }
+    });
+    appChatMessages = Array.from(chatMap.values());
+    saveChatMessages();
+
+    // 4. SMART MERGE REPORTS (Union by ID)
+    const repMap = new Map();
+    if (cloudData && Array.isArray(cloudData.reports)) {
+      cloudData.reports.forEach(r => {
+        if (r && r.id && !deletedReports.includes(r.id)) {
+          repMap.set(r.id, r);
+        }
+      });
+    }
+    appReports.forEach(r => {
+      if (r && r.id && !deletedReports.includes(r.id)) {
+        const inCloud = repMap.get(r.id);
+        if (inCloud) {
+          // If locally reviewed (approved/rejected), preserve resolution
+          if (r.status !== 'pending' && inCloud.status === 'pending') {
+            repMap.set(r.id, { ...inCloud, ...r });
+          } else {
+            repMap.set(r.id, { ...r, ...inCloud });
+          }
+        } else {
+          repMap.set(r.id, r);
+        }
+      }
+    });
+    appReports = Array.from(repMap.values());
+    saveReports();
+
+    // 5. SMART MERGE LEAVES (Union by ID)
+    const leaveMap = new Map();
+    if (cloudData && Array.isArray(cloudData.leaves)) {
+      cloudData.leaves.forEach(l => {
+        if (l && l.id && !deletedLeaves.includes(l.id)) {
+          leaveMap.set(l.id, l);
+        }
+      });
+    }
+    appLeaves.forEach(l => {
+      if (l && l.id && !deletedLeaves.includes(l.id)) {
+        const inCloud = leaveMap.get(l.id);
+        if (inCloud) {
+          if (l.status !== 'pending' && inCloud.status === 'pending') {
+            leaveMap.set(l.id, { ...inCloud, ...l });
+          } else {
+            leaveMap.set(l.id, { ...l, ...inCloud });
+          }
+        } else {
+          leaveMap.set(l.id, l);
+        }
+      }
+    });
+    appLeaves = Array.from(leaveMap.values());
+    saveLeaves();
+
+    // 6. SMART MERGE FLEET (Union by ID)
+    const fleetMap = new Map();
+    if (cloudData && Array.isArray(cloudData.fleet)) {
+      cloudData.fleet.forEach(b => {
+        if (b && b.id && !deletedFleet.includes(b.id)) {
+          fleetMap.set(b.id, b);
+        }
+      });
+    }
+    appFleet.forEach(b => {
+      if (b && b.id && !deletedFleet.includes(b.id)) {
+        fleetMap.set(b.id, b);
+      }
+    });
+    appFleet = Array.from(fleetMap.values());
+    saveFleet();
+
+    // 7. SMART MERGE ROUTES
+    const routeMap = new Map();
+    if (cloudData && Array.isArray(cloudData.routes)) {
+      cloudData.routes.forEach(rt => {
+        if (rt && rt.id && !deletedRoutes.includes(rt.id)) {
+          routeMap.set(rt.id, rt);
+        }
+      });
+    }
+    appRoutes.forEach(rt => {
+      if (rt && rt.id && !deletedRoutes.includes(rt.id)) {
+        routeMap.set(rt.id, rt);
+      }
+    });
+    appRoutes = Array.from(routeMap.values());
+    saveRoutes();
+
+    // 8. TICKER
+    let tickerData = {
+      text: localStorage.getItem('korenevo_ticker_text') || 'Уважаемые водители! На 104-м пригородном маршруте в районе с. Коренёво открыт отремонтированный объезд.',
+      release: localStorage.getItem('korenevo_ticker_release') || 'Выпуск на линию: 100%',
+      fuel: localStorage.getItem('korenevo_ticker_fuel') || 'Топливо: В норме'
+    };
+    if (cloudData && cloudData.ticker && cloudData.lastUpdated && cloudData.lastUpdated > (CLOUD_CONFIG.lastSyncTime || 0)) {
+      tickerData = cloudData.ticker;
+    }
+
+    const payload = {
+      users: appUsers,
+      fleet: appFleet,
+      routes: appRoutes,
+      reports: appReports,
+      leaves: appLeaves,
+      chat: appChatMessages,
+      ticker: tickerData,
+      lastUpdated: Date.now(),
+      updatedBy: currentUser ? currentUser.name : 'Гость'
+    };
 
     const response = await fetch(endpoint, {
       method: 'PUT',
@@ -572,13 +777,13 @@ async function syncToCloud(isSilent = true) {
     CLOUD_CONFIG.status = 'online';
     CLOUD_CONFIG.lastSyncTime = Date.now();
     if (!isSilent) {
-      showToast('Все данные предприятия успешно выгружены в облако!', 'success');
+      showToast('Все данные предприятия успешно синхронизированы с базой данных!', 'success');
     }
   } catch (err) {
     console.error('Cloud Sync Error:', err);
     CLOUD_CONFIG.status = 'error';
     if (!isSilent) {
-      showToast('Ошибка при синхронизации с облаком. Проверьте ссылку Firebase.', 'error');
+      showToast('Ошибка при синхронизации с базой данных.', 'error');
     }
   } finally {
     CLOUD_CONFIG.isSyncing = false;
@@ -645,9 +850,22 @@ function applyCloudData(data) {
   // 1. Merge Users
   if (Array.isArray(data.users) && data.users.length > 0) {
     const prevCount = appUsers.length;
+    const deletedUsers = getDeletedIds('users');
     const userMap = new Map();
-    appUsers.forEach(u => userMap.set(u.id, u));
-    data.users.forEach(cu => userMap.set(cu.id, cu));
+    
+    // Combine cloud users + local users so local accounts are never deleted
+    data.users.forEach(cu => {
+      if (cu && cu.id && !deletedUsers.includes(cu.id)) {
+        userMap.set(cu.id, cu);
+      }
+    });
+    appUsers.forEach(u => {
+      if (u && u.id && !deletedUsers.includes(u.id)) {
+        if (!userMap.has(u.id)) {
+          userMap.set(u.id, u);
+        }
+      }
+    });
 
     appUsers = Array.from(userMap.values());
     ensureChiefAdminExists();
@@ -1043,10 +1261,18 @@ function updateAuthUI() {
         </button>
 
         ${isAdmin ? `
-          <button onclick="openAdminPanel()" class="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-black text-xs shadow-md border border-amber-300 flex items-center gap-1 transition cursor-pointer">
+          <button onclick="openAdminPanel()" class="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-black text-xs shadow-md border border-amber-300 flex items-center gap-1 transition cursor-pointer" title="Панель управления руководителя предприятия">
             <i class="fa-solid fa-crown text-xs"></i> <span>Админка</span>
           </button>
-        ` : ''}
+        ` : (currentUser.role === 'dispatch' ? `
+          <button onclick="openAdminPanel('fleet')" class="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-sky-600 to-blue-700 hover:from-sky-500 hover:to-blue-600 text-white font-bold text-xs shadow-md border border-sky-400/50 flex items-center gap-1.5 transition cursor-pointer" title="Диспетчерская служба: управление автобусами и маршрутами">
+            <i class="fa-solid fa-bus text-xs"></i> <span>Диспетчерская</span>
+          </button>
+        ` : (currentUser.role === 'hr' ? `
+          <button onclick="openAdminPanel('users')" class="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-700 hover:from-purple-500 hover:to-indigo-600 text-white font-bold text-xs shadow-md border border-purple-400/50 flex items-center gap-1.5 transition cursor-pointer" title="Отдел кадров: сотрудники и отгулы">
+            <i class="fa-solid fa-users-gear text-xs"></i> <span>Отдел кадров</span>
+          </button>
+        ` : ''))}
 
         <button onclick="handleLogout()" class="px-2.5 py-1.5 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-300 text-xs font-medium border border-rose-800/60 transition flex items-center gap-1 cursor-pointer" title="Выйти из аккаунта">
           <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i> <span>Выйти</span>
@@ -1410,7 +1636,7 @@ function renderReports() {
     return;
   }
 
-  const canReview = currentUser && (checkIsAdmin(currentUser) || currentUser.role === 'dispatch');
+  const canReview = currentUser && (checkIsAdmin(currentUser) || currentUser.role === 'dispatch' || currentUser.role === 'hr');
 
   container.innerHTML = filtered.map(rep => {
     let statusBadge = '';
@@ -1559,6 +1785,8 @@ function deleteReport(id) {
     renderReports();
     updateBadges();
     showToast('Отчет успешно удален из системы.', 'success');
+    addDeletedId('reports', id);
+    syncToCloud();
   }
 }
 
@@ -1621,6 +1849,7 @@ function handleSubmitReport(e) {
   closeModal('modal-submit-report');
   showToast('Путевой отчет успешно передан на проверку в диспетчерскую!', 'success');
   e.target.reset();
+  syncToCloud();
 }
 
 function promptApproveReport(id) {
@@ -1697,7 +1926,7 @@ function renderLeaves() {
     return;
   }
 
-  const canManageHR = currentUser && (checkIsAdmin(currentUser) || currentUser.role === 'hr');
+  const canManageHR = currentUser && (checkIsAdmin(currentUser) || currentUser.role === 'hr' || currentUser.role === 'dispatch');
 
   container.innerHTML = filtered.map(item => {
     let statusBadge = '';
@@ -1824,6 +2053,8 @@ function deleteLeave(id) {
     renderLeaves();
     updateBadges();
     showToast('Заявление на отгул удалено.', 'success');
+    addDeletedId('leaves', id);
+    syncToCloud();
   }
 }
 
@@ -1878,6 +2109,7 @@ function handleSubmitLeave(e) {
   closeModal('modal-submit-leave');
   showToast('Заявление на отгул успешно передано в отдел кадров!', 'success');
   e.target.reset();
+  syncToCloud();
 }
 
 function promptApproveLeave(id) {
@@ -1893,6 +2125,7 @@ function promptApproveLeave(id) {
     renderLeaves();
     updateBadges();
     showToast('Заявление на отгул согласовано!', 'success');
+    syncToCloud();
   }
 }
 
@@ -1909,6 +2142,7 @@ function promptRejectLeave(id) {
     renderLeaves();
     updateBadges();
     showToast('Заявление отклонено.', 'warning');
+    syncToCloud();
   }
 }
 
@@ -2021,13 +2255,22 @@ function selectRouteForReport(routeTitle) {
 }
 
 // ================= ADMIN PANEL CONTROLLER =================
-function openAdminPanel() {
-  if (!checkIsAdmin(currentUser)) {
-    showToast('Доступ запрещен! Раздел доступен только Администраторам предприятия.', 'error');
+function openAdminPanel(defaultTab) {
+  const hasAccess = checkIsAdmin(currentUser) || (currentUser && (currentUser.role === 'dispatch' || currentUser.role === 'hr'));
+  if (!hasAccess) {
+    showToast('Доступ запрещен! Раздел доступен руководству предприятия (Директор, Диспетчерская, Кадры).', 'error');
     return;
   }
   openModal('modal-admin-panel');
-  switchAdminTab('users');
+  if (defaultTab) {
+    switchAdminTab(defaultTab);
+  } else if (currentUser.role === 'dispatch' && !checkIsAdmin(currentUser)) {
+    switchAdminTab('fleet');
+  } else if (currentUser.role === 'hr' && !checkIsAdmin(currentUser)) {
+    switchAdminTab('users');
+  } else {
+    switchAdminTab('users');
+  }
 }
 
 function switchAdminTab(tabName) {
@@ -2194,6 +2437,7 @@ function changeUserRole(userId, newRole) {
   renderReports();
   renderLeaves();
   showToast(`Роль сотрудника «${target.name}» изменена на: ${ROLES[newRole]?.name || newRole}`, 'success');
+  syncToCloud();
 }
 
 function changeUserStatus(userId, newStatus) {
@@ -2203,6 +2447,7 @@ function changeUserStatus(userId, newStatus) {
   target.status = newStatus;
   saveUsers();
   showToast(`Статус сотрудника «${target.name}» обновлен`, 'info');
+  syncToCloud();
 }
 
 function editUserPrompt(userId) {
@@ -2237,6 +2482,7 @@ function editUserPrompt(userId) {
   renderAdminUsers();
   updateAuthUI();
   showToast(`Данные сотрудника «${target.name}» успешно обновлены!`, 'success');
+  syncToCloud();
 }
 
 function deleteUserFromAdmin(userId) {
@@ -2263,6 +2509,7 @@ function deleteUserFromAdmin(userId) {
     renderAdminUsers();
     renderAdminFleet();
     showToast(`Сотрудник «${target.name}» уволен из штата.`, 'warning');
+    addDeletedId('users', userId);
     syncToCloud();
   }
 }
@@ -2574,6 +2821,7 @@ function deleteBusFromAdmin(busId) {
     renderAdminUsers();
     updateAuthUI();
     showToast(`Автобус «${bus.model}» списан и удален из парка.`, 'warning');
+    addDeletedId('fleet', busId);
     syncToCloud();
   }
 }
@@ -2675,6 +2923,8 @@ function deleteRouteFromAdmin(routeId) {
     renderAdminRoutes();
     renderRoutes();
     showToast(`Маршрут № ${route.number} удален.`, 'warning');
+    addDeletedId('routes', routeId);
+    syncToCloud();
   }
 }
 
