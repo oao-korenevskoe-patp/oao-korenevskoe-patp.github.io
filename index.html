@@ -66,6 +66,12 @@
             <span id="depot-clock" class="text-sky-300 font-bold text-sm tracking-widest">12:00:00</span>
           </div>
 
+          <!-- Notification Bell Button -->
+          <button type="button" onclick="openNotificationsModal()" id="header-notif-btn" class="relative p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-sky-900/60 hover:border-sky-500/50 transition cursor-pointer flex-shrink-0" title="Уведомления">
+            <i class="fa-solid fa-bell text-sky-400 text-sm"></i>
+            <span id="header-notif-badge" class="hidden absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white font-black text-[10px] flex items-center justify-center border-2 border-slate-950 animate-pulse">0</span>
+          </button>
+
           <!-- Active User Info or Auth Buttons -->
           <div id="auth-nav-container" class="w-full sm:w-auto flex items-center justify-end">
             <!-- Injected via JavaScript based on login state -->
@@ -97,18 +103,23 @@
     </div>
   </header>
 
-  <!-- DISPATCH ANNOUNCEMENT TICKER -->
-  <div class="bg-gradient-to-r from-blue-950/80 via-sky-950/90 to-blue-950/80 border-b border-sky-800/30 py-2 px-4 text-xs">
-    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
-      <div class="flex items-center gap-2 overflow-hidden">
-        <span class="px-2 py-0.5 bg-sky-500/20 text-sky-300 rounded font-bold border border-sky-500/40 shrink-0">
-          <i class="fa-solid fa-bullhorn mr-1"></i> СВОДКА ПАТП
+  <!-- DISPATCH ANNOUNCEMENT TICKER (RUNNING MARQUEE) -->
+  <div class="bg-gradient-to-r from-blue-950/90 via-slate-900 to-blue-950/90 border-b border-sky-800/40 py-2 px-3 sm:px-6 text-xs text-slate-300 relative z-10 shadow-sm">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-3 sm:gap-6">
+      <div class="flex items-center gap-2 overflow-hidden flex-1 min-w-0">
+        <span class="px-2.5 py-1 bg-sky-500/20 text-sky-300 rounded-lg font-bold border border-sky-500/40 shrink-0 flex items-center gap-1.5 shadow-sm">
+          <i class="fa-solid fa-bullhorn text-amber-400 animate-pulse"></i>
+          <span class="tracking-wider uppercase text-[11px]">СВОДКА ПАТП:</span>
         </span>
-        <span id="ticker-text" class="truncate text-slate-300">
-          Уважаемые водители! На 104-м пригородном маршруте в районе с. Коренёво открыт отремонтированный объезд. Все путевые листы и отчёты о сменах сдавать строго через раздел «Отчеты».
-        </span>
+        <div class="relative overflow-hidden flex-1 min-w-0 h-6 flex items-center ticker-marquee-container" title="Наведите курсор, чтобы приостановить бегущую строку">
+          <div class="ticker-marquee-track flex items-center space-x-12">
+            <span class="ticker-text-content text-slate-200 font-medium whitespace-nowrap">Уважаемые водители! На 104-м пригородном маршруте в районе с. Коренёво открыт отремонтированный объезд. Все путевые листы и отчёты о сменах сдавать строго через раздел «Отчеты».</span>
+            <span class="text-sky-400 font-bold opacity-60">•</span>
+            <span class="ticker-text-content text-slate-200 font-medium whitespace-nowrap">Уважаемые водители! На 104-м пригородном маршруте в районе с. Коренёво открыт отремонтированный объезд. Все путевые листы и отчёты о сменах сдавать строго через раздел «Отчеты».</span>
+          </div>
+        </div>
       </div>
-      <div class="hidden lg:flex items-center gap-4 text-slate-400 shrink-0 font-mono text-[11px]">
+      <div class="hidden lg:flex items-center gap-4 text-slate-400 shrink-0 font-mono text-[11px] bg-slate-950/40 px-3 py-1 rounded-lg border border-sky-900/30">
         <span id="ticker-release"><i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i>Выпуск на линию: 100%</span>
         <span id="ticker-fuel"><i class="fa-solid fa-gas-pump text-amber-400 mr-1"></i>Топливо: В норме</span>
       </div>
@@ -1261,6 +1272,30 @@
         </button>
       </div>
 
+    </div>
+  </div>
+
+  <!-- MODAL: NOTIFICATIONS & ALERTS -->
+  <div id="modal-notifications" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-slate-900 border border-sky-800/80 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-scale-up">
+      <div class="p-4 border-b border-sky-900/60 flex items-center justify-between bg-slate-950/60">
+        <div class="flex items-center gap-2 text-white font-bold text-sm sm:text-base">
+          <i class="fa-solid fa-bell text-amber-400"></i>
+          <span>Уведомления и оповещения</span>
+          <span id="modal-notif-count-badge" class="px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-950 border border-sky-700 text-sky-300">0</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <button type="button" onclick="markAllNotificationsAsRead()" class="text-xs text-sky-400 hover:text-sky-300 transition underline cursor-pointer">
+            Прочитать все
+          </button>
+          <button type="button" onclick="closeModal('modal-notifications')" class="text-slate-400 hover:text-white p-1 transition cursor-pointer">
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+      </div>
+      <div id="notifications-list-container" class="p-4 space-y-3 overflow-y-auto flex-1 text-xs">
+        <!-- Rendered via JS -->
+      </div>
     </div>
   </div>
 

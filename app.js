@@ -406,7 +406,9 @@ let appFleet = [];
 let appChatMessages = [];
 
 
-// ================= DELETION TRACKING HELPERS =================
+// ================= DELETION TRACKING & NOTIFICATIONS HELPERS =================
+let appNotifications = [];
+
 function getDeletedIds(key) {
   try {
     const raw = localStorage.getItem('korenevo_deleted_' + key);
@@ -414,6 +416,17 @@ function getDeletedIds(key) {
   } catch (e) {
     return [];
   }
+}
+
+function getAllDeletedIds() {
+  return {
+    reports: getDeletedIds('reports'),
+    leaves: getDeletedIds('leaves'),
+    chat: getDeletedIds('chat'),
+    users: getDeletedIds('users'),
+    fleet: getDeletedIds('fleet'),
+    routes: getDeletedIds('routes')
+  };
 }
 
 function addDeletedId(key, id) {
@@ -432,6 +445,267 @@ function removeDeletedId(key, id) {
     list = list.filter(item => item !== id);
     localStorage.setItem('korenevo_deleted_' + key, JSON.stringify(list));
   } catch (e) {}
+}
+
+function mergeDeletedIdsFromCloud(cloudDeleted) {
+  if (!cloudDeleted || typeof cloudDeleted !== 'object') return;
+  const keys = ['reports', 'leaves', 'chat', 'users', 'fleet', 'routes'];
+  keys.forEach(k => {
+    if (Array.isArray(cloudDeleted[k])) {
+      const local = getDeletedIds(k);
+      const union = Array.from(new Set([...local, ...cloudDeleted[k]]));
+      try {
+        localStorage.setItem('korenevo_deleted_' + k, JSON.stringify(union));
+      } catch (e) {}
+    }
+  });
+}
+
+function loadNotifications() {
+  try {
+    const raw = localStorage.getItem('korenevo_notifications');
+    appNotifications = raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    appNotifications = [];
+  }
+}
+
+function saveNotifications() {
+  try {
+    localStorage.setItem('korenevo_notifications', JSON.stringify(appNotifications));
+  } catch (e) {}
+}
+
+function playNotificationSound() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.12, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.35);
+  } catch (e) {}
+}
+
+function createNotification({ targetUserId, targetUserName, title, message, type = 'info' }) {
+  const notif = {
+    id: 'notif_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+    targetUserId: targetUserId || '',
+    targetUserName: targetUserName || '',
+    title: title,
+    message: message,
+    type: type,
+    timestamp: new Date().toLocaleString('ru-RU', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    }),
+    createdAtMs: Date.now(),
+    readBy: []
+  };
+
+  appNotifications.unshift(notif);
+  if (appNotifications.length > 60) {
+    appNotifications = appNotifications.slice(0, 60);
+  }
+  saveNotifications();
+  updateNotificationsUI();
+  return notif;
+}
+
+function getMyNotifications() {
+  if (!currentUser) return [];
+  return appNotifications.filter(n => {
+    if (!n) return false;
+    if (n.targetUserId === 'all') return true;
+    if (currentUser.id && n.targetUserId === currentUser.id) return true;
+    if (currentUser.name && n.targetUserName && n.targetUserName.toLowerCase() === currentUser.name.toLowerCase()) return true;
+    if (n.targetUserId === 'management' && (checkIsAdmin(currentUser) || currentUser.role === 'dispatch' || currentUser.role === 'hr')) return true;
+    return false;
+  });
+}
+
+function getUnreadNotificationsCount() {
+  if (!currentUser) return 0;
+  const my = getMyNotifications();
+  return my.filter(n => !n.readBy || !n.readBy.includes(currentUser.id)).length;
+}
+
+function updateNotificationsUI() {
+  const badge = document.getElementById('header-notif-badge');
+  const modalBadge = document.getElementById('modal-notif-count-badge');
+  const container = document.getElementById('notifications-list-container');
+
+  const unreadCount = getUnreadNotificationsCount();
+  if (badge) {
+    if (unreadCount > 0) {
+      badge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+  }
+  if (modalBadge) {
+    modalBadge.textContent = unreadCount;
+  }
+
+  // Toast for newly arrived unread notification
+  if (currentUser && unreadCount > 0) {
+    const my = getMyNotifications();
+    const unreadItems = my.filter(n => !n.readBy || !n.readBy.includes(currentUser.id));
+    if (unreadItems.length > 0) {
+      const newest = unreadItems[0];
+      const lastAlerted = localStorage.getItem('korenevo_last_alerted_notif');
+      if (lastAlerted !== newest.id) {
+        localStorage.setItem('korenevo_last_alerted_notif', newest.id);
+        showToast(`🔔 ${newest.title}: ${newest.message}`, newest.type === 'danger' ? 'error' : 'success', 8000);
+        playNotificationSound();
+      }
+    }
+  }
+
+  if (!container) return;
+
+  if (!currentUser) {
+    container.innerHTML = `
+      <div class="text-center py-8 text-slate-400 space-y-3">
+        <i class="fa-solid fa-bell-slash text-3xl text-slate-600"></i>
+        <p>Войдите в свой аккаунт, чтобы просматривать персональные оповещения диспетчерской и отдела кадров.</p>
+        <button type="button" onclick="closeModal('modal-notifications'); openModal('modal-login');" class="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold transition cursor-pointer">
+          Войти в аккаунт
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  const myNotifs = getMyNotifications();
+  if (myNotifs.length === 0) {
+    container.innerHTML = `
+      <div class="text-center py-8 text-slate-500 space-y-2">
+        <i class="fa-regular fa-bell text-3xl opacity-40"></i>
+        <p class="text-slate-400">У вас пока нет уведомлений.</p>
+        <p class="text-[11px] text-slate-500">Здесь будут отображаться решения по вашим отчётам о смене и отгулам.</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = myNotifs.map(n => {
+    const isRead = n.readBy && n.readBy.includes(currentUser.id);
+    let iconClass = 'fa-solid fa-circle-info text-sky-400';
+    let borderClass = 'border-sky-900/60 bg-slate-950/60';
+    if (n.type === 'success') {
+      iconClass = 'fa-solid fa-circle-check text-emerald-400';
+      borderClass = 'border-emerald-900/50 bg-emerald-950/20';
+    } else if (n.type === 'danger') {
+      iconClass = 'fa-solid fa-circle-xmark text-rose-400';
+      borderClass = 'border-rose-900/50 bg-rose-950/20';
+    }
+
+    return `
+      <div class="p-3.5 rounded-xl border ${borderClass} relative transition space-y-1.5 ${isRead ? 'opacity-70' : 'shadow-md'}">
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex items-center gap-2 font-bold text-slate-200">
+            <i class="${iconClass}"></i>
+            <span>${escapeHtml(n.title)}</span>
+            ${!isRead ? '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>' : ''}
+          </div>
+          <span class="text-[10px] text-slate-500 font-mono">${escapeHtml(n.timestamp)}</span>
+        </div>
+        <p class="text-slate-300 text-xs leading-relaxed pl-5">${escapeHtml(n.message)}</p>
+        <div class="pt-1 pl-5 flex items-center justify-between text-[11px]">
+          ${!isRead ? `
+            <button type="button" onclick="markNotificationAsRead('${n.id}')" class="text-sky-400 hover:text-sky-300 font-medium transition cursor-pointer">
+              <i class="fa-solid fa-check mr-1"></i>Отметить прочитанным
+            </button>
+          ` : '<span class="text-slate-500 text-[10px]"><i class="fa-solid fa-check-double mr-1"></i>Прочитано</span>'}
+          <button type="button" onclick="deleteNotification('${n.id}')" class="text-rose-400/80 hover:text-rose-300 transition cursor-pointer" title="Удалить уведомление">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function openNotificationsModal() {
+  updateNotificationsUI();
+  openModal('modal-notifications');
+}
+
+function markNotificationAsRead(notifId) {
+  if (!currentUser) return;
+  const notif = appNotifications.find(n => n.id === notifId);
+  if (notif) {
+    if (!notif.readBy) notif.readBy = [];
+    if (!notif.readBy.includes(currentUser.id)) {
+      notif.readBy.push(currentUser.id);
+      saveNotifications();
+      updateNotificationsUI();
+      syncToCloud();
+    }
+  }
+}
+
+function markAllNotificationsAsRead() {
+  if (!currentUser) return;
+  let changed = false;
+  appNotifications.forEach(n => {
+    if (n && (n.targetUserId === currentUser.id || n.targetUserId === 'all' || (n.targetUserName && n.targetUserName.toLowerCase() === currentUser.name.toLowerCase()))) {
+      if (!n.readBy) n.readBy = [];
+      if (!n.readBy.includes(currentUser.id)) {
+        n.readBy.push(currentUser.id);
+        changed = true;
+      }
+    }
+  });
+  if (changed) {
+    saveNotifications();
+    updateNotificationsUI();
+    showToast('Все уведомления помечены как прочитанные.', 'info');
+    syncToCloud();
+  }
+}
+
+function deleteNotification(notifId) {
+  appNotifications = appNotifications.filter(n => n.id !== notifId);
+  saveNotifications();
+  updateNotificationsUI();
+  syncToCloud();
+}
+
+function sendSystemRadioMessage(text) {
+  const now = new Date();
+  const dateStr = `${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()}`;
+  const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const clearTimestamp = Date.now();
+
+  const msg = {
+    id: 'msg_sys_' + clearTimestamp + '_' + Math.random().toString(36).substring(2, 6),
+    userId: 'system_dispatcher',
+    userName: 'Диспетчерская служба',
+    userRole: 'dispatch',
+    userAvatar: 'logo.jpg',
+    text: text,
+    timestamp: `${dateStr} ${timeStr}`,
+    createdAtMs: clearTimestamp
+  };
+
+  appChatMessages.push(msg);
+  saveChatMessages();
+  if (currentTab === 'chat') {
+    renderChat();
+    const chatContainer = document.getElementById('chat-messages-container');
+    if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
 }
 
 // ================= STORAGE FUNCTIONS =================
@@ -608,6 +882,10 @@ async function syncToCloud(isSilent = true) {
       console.warn('Pre-sync fetch warning:', e);
     }
 
+    // Merge tombstones (deleted_ids)
+    if (cloudData && cloudData.deleted_ids) {
+      mergeDeletedIdsFromCloud(cloudData.deleted_ids);
+    }
     const deletedUsers = getDeletedIds('users');
     const deletedChat = getDeletedIds('chat');
     const deletedReports = getDeletedIds('reports');
@@ -634,28 +912,41 @@ async function syncToCloud(isSilent = true) {
         }
       }
     });
-    appUsers = Array.from(userMap.values());
+    appUsers = Array.from(userMap.values()).filter(u => !deletedUsers.includes(u.id));
     ensureChiefAdminExists();
     saveUsers();
 
-    // 3. SMART MERGE CHAT (Union by ID)
+    // 3. SMART MERGE CHAT (Respect chatClearedAt)
+    const cloudClearedAt = (cloudData && Number(cloudData.chatClearedAt)) || 0;
+    const localClearedAt = Number(localStorage.getItem('korenevo_chat_cleared_at')) || 0;
+    const effectiveClearedAt = Math.max(cloudClearedAt, localClearedAt);
+    if (effectiveClearedAt > 0) {
+      localStorage.setItem('korenevo_chat_cleared_at', effectiveClearedAt);
+    }
+
     const chatMap = new Map();
     if (cloudData && Array.isArray(cloudData.chat)) {
       cloudData.chat.forEach(m => {
         if (m && m.id && !deletedChat.includes(m.id)) {
-          chatMap.set(m.id, m);
+          const msgTime = m.createdAtMs || (m.id.startsWith('msg_') ? parseInt(m.id.split('_')[1]) : 0);
+          if (effectiveClearedAt === 0 || msgTime >= effectiveClearedAt || m.id.startsWith('msg_sys_')) {
+            chatMap.set(m.id, m);
+          }
         }
       });
     }
     appChatMessages.forEach(m => {
       if (m && m.id && !deletedChat.includes(m.id)) {
-        chatMap.set(m.id, m);
+        const msgTime = m.createdAtMs || (m.id.startsWith('msg_') ? parseInt(m.id.split('_')[1]) : 0);
+        if (effectiveClearedAt === 0 || msgTime >= effectiveClearedAt || m.id.startsWith('msg_sys_')) {
+          chatMap.set(m.id, m);
+        }
       }
     });
-    appChatMessages = Array.from(chatMap.values());
+    appChatMessages = Array.from(chatMap.values()).filter(m => !deletedChat.includes(m.id));
     saveChatMessages();
 
-    // 4. SMART MERGE REPORTS (Union by ID)
+    // 4. SMART MERGE REPORTS (Union by ID, finalized status ALWAYS wins over pending)
     const repMap = new Map();
     if (cloudData && Array.isArray(cloudData.reports)) {
       cloudData.reports.forEach(r => {
@@ -668,21 +959,26 @@ async function syncToCloud(isSilent = true) {
       if (r && r.id && !deletedReports.includes(r.id)) {
         const inCloud = repMap.get(r.id);
         if (inCloud) {
-          // If locally reviewed (approved/rejected), preserve resolution
+          let mergedItem;
           if (r.status !== 'pending' && inCloud.status === 'pending') {
-            repMap.set(r.id, { ...inCloud, ...r });
+            mergedItem = { ...inCloud, ...r };
+          } else if (inCloud.status !== 'pending' && r.status === 'pending') {
+            mergedItem = { ...r, ...inCloud };
+          } else if (r.status !== 'pending' && inCloud.status !== 'pending') {
+            mergedItem = (r.reviewedAt && inCloud.reviewedAt && r.reviewedAt > inCloud.reviewedAt) ? { ...inCloud, ...r } : { ...r, ...inCloud };
           } else {
-            repMap.set(r.id, { ...r, ...inCloud });
+            mergedItem = { ...r, ...inCloud };
           }
+          repMap.set(r.id, mergedItem);
         } else {
           repMap.set(r.id, r);
         }
       }
     });
-    appReports = Array.from(repMap.values());
+    appReports = Array.from(repMap.values()).filter(r => !deletedReports.includes(r.id));
     saveReports();
 
-    // 5. SMART MERGE LEAVES (Union by ID)
+    // 5. SMART MERGE LEAVES (Union by ID, finalized status ALWAYS wins over pending)
     const leaveMap = new Map();
     if (cloudData && Array.isArray(cloudData.leaves)) {
       cloudData.leaves.forEach(l => {
@@ -695,17 +991,23 @@ async function syncToCloud(isSilent = true) {
       if (l && l.id && !deletedLeaves.includes(l.id)) {
         const inCloud = leaveMap.get(l.id);
         if (inCloud) {
+          let mergedItem;
           if (l.status !== 'pending' && inCloud.status === 'pending') {
-            leaveMap.set(l.id, { ...inCloud, ...l });
+            mergedItem = { ...inCloud, ...l };
+          } else if (inCloud.status !== 'pending' && l.status === 'pending') {
+            mergedItem = { ...l, ...inCloud };
+          } else if (l.status !== 'pending' && inCloud.status !== 'pending') {
+            mergedItem = (l.reviewedAt && inCloud.reviewedAt && l.reviewedAt > inCloud.reviewedAt) ? { ...inCloud, ...l } : { ...l, ...inCloud };
           } else {
-            leaveMap.set(l.id, { ...l, ...inCloud });
+            mergedItem = { ...l, ...inCloud };
           }
+          leaveMap.set(l.id, mergedItem);
         } else {
           leaveMap.set(l.id, l);
         }
       }
     });
-    appLeaves = Array.from(leaveMap.values());
+    appLeaves = Array.from(leaveMap.values()).filter(l => !deletedLeaves.includes(l.id));
     saveLeaves();
 
     // 6. SMART MERGE FLEET (Union by ID)
@@ -722,10 +1024,10 @@ async function syncToCloud(isSilent = true) {
         fleetMap.set(b.id, b);
       }
     });
-    appFleet = Array.from(fleetMap.values());
+    appFleet = Array.from(fleetMap.values()).filter(b => !deletedFleet.includes(b.id));
     saveFleet();
 
-    // 7. SMART MERGE ROUTES
+    // 7. SMART MERGE ROUTES (Union by ID)
     const routeMap = new Map();
     if (cloudData && Array.isArray(cloudData.routes)) {
       cloudData.routes.forEach(rt => {
@@ -739,17 +1041,50 @@ async function syncToCloud(isSilent = true) {
         routeMap.set(rt.id, rt);
       }
     });
-    appRoutes = Array.from(routeMap.values());
+    appRoutes = Array.from(routeMap.values()).filter(rt => !deletedRoutes.includes(rt.id));
     saveRoutes();
 
-    // 8. TICKER
-    let tickerData = {
-      text: localStorage.getItem('korenevo_ticker_text') || 'Уважаемые водители! На 104-м пригородном маршруте в районе с. Коренёво открыт отремонтированный объезд.',
-      release: localStorage.getItem('korenevo_ticker_release') || 'Выпуск на линию: 100%',
-      fuel: localStorage.getItem('korenevo_ticker_fuel') || 'Топливо: В норме'
-    };
-    if (cloudData && cloudData.ticker && cloudData.lastUpdated && cloudData.lastUpdated > (CLOUD_CONFIG.lastSyncTime || 0)) {
+    // 8. SMART MERGE NOTIFICATIONS
+    const notifMap = new Map();
+    if (cloudData && Array.isArray(cloudData.notifications)) {
+      cloudData.notifications.forEach(n => {
+        if (n && n.id) notifMap.set(n.id, n);
+      });
+    }
+    appNotifications.forEach(n => {
+      if (n && n.id) {
+        const inCloud = notifMap.get(n.id);
+        if (inCloud) {
+          const readBy = Array.from(new Set([...(inCloud.readBy || []), ...(n.readBy || [])]));
+          notifMap.set(n.id, { ...inCloud, ...n, readBy });
+        } else {
+          notifMap.set(n.id, n);
+        }
+      }
+    });
+    appNotifications = Array.from(notifMap.values()).sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0)).slice(0, 60);
+    saveNotifications();
+
+    // 9. TICKER (Newest updatedAt wins)
+    const localTickerUpdated = Number(localStorage.getItem('korenevo_ticker_updated_at')) || 0;
+    const cloudTickerUpdated = (cloudData && cloudData.ticker && Number(cloudData.ticker.updatedAt)) || 0;
+
+    let tickerData;
+    if (cloudTickerUpdated > localTickerUpdated && cloudData && cloudData.ticker) {
       tickerData = cloudData.ticker;
+      if (tickerData.text) localStorage.setItem('korenevo_ticker_text', tickerData.text);
+      if (tickerData.release) localStorage.setItem('korenevo_ticker_release', tickerData.release);
+      if (tickerData.fuel) localStorage.setItem('korenevo_ticker_fuel', tickerData.fuel);
+      localStorage.setItem('korenevo_ticker_updated_at', cloudTickerUpdated);
+      loadTickerSettings();
+    } else {
+      tickerData = {
+        text: localStorage.getItem('korenevo_ticker_text') || 'Уважаемые водители! На 104-м пригородном маршруте в районе с. Коренёво открыт отремонтированный объезд. Все путевые листы и отчёты о сменах сдавать строго через раздел «Отчеты».',
+        release: localStorage.getItem('korenevo_ticker_release') || 'Выпуск на линию: 100%',
+        fuel: localStorage.getItem('korenevo_ticker_fuel') || 'Топливо: В норме',
+        updatedAt: localTickerUpdated || Date.now(),
+        updatedBy: currentUser ? currentUser.name : 'Диспетчер'
+      };
     }
 
     const payload = {
@@ -759,7 +1094,10 @@ async function syncToCloud(isSilent = true) {
       reports: appReports,
       leaves: appLeaves,
       chat: appChatMessages,
+      notifications: appNotifications,
       ticker: tickerData,
+      deleted_ids: getAllDeletedIds(),
+      chatClearedAt: effectiveClearedAt,
       lastUpdated: Date.now(),
       updatedBy: currentUser ? currentUser.name : 'Гость'
     };
@@ -783,7 +1121,7 @@ async function syncToCloud(isSilent = true) {
     console.error('Cloud Sync Error:', err);
     CLOUD_CONFIG.status = 'error';
     if (!isSilent) {
-      showToast('Ошибка при синхронизации с базой данных.', 'error');
+      showToast(`Ошибка синхронизации: ${err.message}`, 'error');
     }
   } finally {
     CLOUD_CONFIG.isSyncing = false;
@@ -794,6 +1132,7 @@ async function syncToCloud(isSilent = true) {
 async function fetchFromCloud(isSilent = true) {
   const baseUrl = getFirebaseUrl();
   if (!baseUrl) {
+    CLOUD_CONFIG.status = 'offline';
     updateCloudStatusUI();
     return;
   }
@@ -801,37 +1140,24 @@ async function fetchFromCloud(isSilent = true) {
   try {
     const endpoint = baseUrl.endsWith('.json') ? baseUrl : `${baseUrl}/patp_db.json`;
     const response = await fetch(endpoint, {
-      method: 'GET',
       headers: { 'Accept': 'application/json' }
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const cloudData = await response.json();
-    if (cloudData && typeof cloudData === 'object') {
-      applyCloudData(cloudData);
+    const data = await response.json();
+    if (data) {
+      applyCloudData(data);
       CLOUD_CONFIG.status = 'online';
       CLOUD_CONFIG.lastSyncTime = Date.now();
-      if (!isSilent) {
-        showToast('Данные успешно загружены из облачной базы!', 'success');
-      }
     } else {
-      console.log('Cloud database is empty, initial seeding...');
-      await syncToCloud(true);
       CLOUD_CONFIG.status = 'online';
-      CLOUD_CONFIG.lastSyncTime = Date.now();
     }
-    fetchCloudPresence();
   } catch (err) {
-    console.warn('Fetch from cloud warning:', err);
-    if (CLOUD_CONFIG.status !== 'online') {
-      CLOUD_CONFIG.status = 'error';
-    }
-    if (!isSilent) {
-      showToast('Не удалось получить данные из облачной базы. Проверьте ссылку.', 'error');
-    }
+    console.warn('Cloud Fetch Warning:', err);
+    CLOUD_CONFIG.status = 'error';
   } finally {
     updateCloudStatusUI();
   }
@@ -847,13 +1173,22 @@ function applyCloudData(data) {
   let hasRoutesChanged = false;
   let hasChatChanged = false;
 
+  // 0. Merge tombstones first
+  if (data.deleted_ids) {
+    mergeDeletedIdsFromCloud(data.deleted_ids);
+  }
+  const deletedUsers = getDeletedIds('users');
+  const deletedReports = getDeletedIds('reports');
+  const deletedLeaves = getDeletedIds('leaves');
+  const deletedChat = getDeletedIds('chat');
+  const deletedFleet = getDeletedIds('fleet');
+  const deletedRoutes = getDeletedIds('routes');
+
   // 1. Merge Users
   if (Array.isArray(data.users) && data.users.length > 0) {
     const prevCount = appUsers.length;
-    const deletedUsers = getDeletedIds('users');
     const userMap = new Map();
     
-    // Combine cloud users + local users so local accounts are never deleted
     data.users.forEach(cu => {
       if (cu && cu.id && !deletedUsers.includes(cu.id)) {
         userMap.set(cu.id, cu);
@@ -867,7 +1202,7 @@ function applyCloudData(data) {
       }
     });
 
-    appUsers = Array.from(userMap.values());
+    appUsers = Array.from(userMap.values()).filter(u => !deletedUsers.includes(u.id));
     ensureChiefAdminExists();
     saveUsers();
 
@@ -883,41 +1218,113 @@ function applyCloudData(data) {
   }
 
   // 2. Merge Fleet
-  if (Array.isArray(data.fleet) && data.fleet.length > 0) {
-    appFleet = data.fleet;
-    saveFleet();
-    hasFleetChanged = true;
+  if (Array.isArray(data.fleet)) {
+    const filteredFleet = data.fleet.filter(b => b && b.id && !deletedFleet.includes(b.id));
+    if (JSON.stringify(appFleet) !== JSON.stringify(filteredFleet)) {
+      appFleet = filteredFleet;
+      saveFleet();
+      hasFleetChanged = true;
+    }
   }
 
   // 3. Merge Routes
-  if (Array.isArray(data.routes) && data.routes.length > 0) {
-    appRoutes = data.routes;
-    saveRoutes();
-    hasRoutesChanged = true;
+  if (Array.isArray(data.routes)) {
+    const filteredRoutes = data.routes.filter(r => r && r.id && !deletedRoutes.includes(r.id));
+    if (JSON.stringify(appRoutes) !== JSON.stringify(filteredRoutes)) {
+      appRoutes = filteredRoutes;
+      saveRoutes();
+      hasRoutesChanged = true;
+    }
   }
 
-  // 4. Merge Reports
+  // 4. Merge Reports (Union by ID, finalized status ALWAYS wins over pending)
   if (Array.isArray(data.reports)) {
-    if (JSON.stringify(appReports) !== JSON.stringify(data.reports)) {
-      appReports = data.reports;
+    const repMap = new Map();
+    data.reports.forEach(cr => {
+      if (cr && cr.id && !deletedReports.includes(cr.id)) {
+        repMap.set(cr.id, cr);
+      }
+    });
+
+    appReports.forEach(lr => {
+      if (lr && lr.id && !deletedReports.includes(lr.id)) {
+        const inCloud = repMap.get(lr.id);
+        if (inCloud) {
+          let merged = { ...inCloud };
+          if (lr.status !== 'pending' && inCloud.status === 'pending') {
+            merged = { ...inCloud, ...lr };
+          } else if (inCloud.status !== 'pending') {
+            merged = { ...lr, ...inCloud };
+          }
+          repMap.set(lr.id, merged);
+        } else {
+          repMap.set(lr.id, lr);
+        }
+      }
+    });
+
+    const mergedReports = Array.from(repMap.values()).filter(r => !deletedReports.includes(r.id));
+    if (JSON.stringify(appReports) !== JSON.stringify(mergedReports)) {
+      appReports = mergedReports;
       saveReports();
       hasReportsChanged = true;
     }
   }
 
-  // 5. Merge Leaves
+  // 5. Merge Leaves (Union by ID, finalized status ALWAYS wins over pending)
   if (Array.isArray(data.leaves)) {
-    if (JSON.stringify(appLeaves) !== JSON.stringify(data.leaves)) {
-      appLeaves = data.leaves;
+    const leaveMap = new Map();
+    data.leaves.forEach(cl => {
+      if (cl && cl.id && !deletedLeaves.includes(cl.id)) {
+        leaveMap.set(cl.id, cl);
+      }
+    });
+
+    appLeaves.forEach(ll => {
+      if (ll && ll.id && !deletedLeaves.includes(ll.id)) {
+        const inCloud = leaveMap.get(ll.id);
+        if (inCloud) {
+          let merged = { ...inCloud };
+          if (ll.status !== 'pending' && inCloud.status === 'pending') {
+            merged = { ...inCloud, ...ll };
+          } else if (inCloud.status !== 'pending') {
+            merged = { ...ll, ...inCloud };
+          }
+          leaveMap.set(ll.id, merged);
+        } else {
+          leaveMap.set(ll.id, ll);
+        }
+      }
+    });
+
+    const mergedLeaves = Array.from(leaveMap.values()).filter(l => !deletedLeaves.includes(l.id));
+    if (JSON.stringify(appLeaves) !== JSON.stringify(mergedLeaves)) {
+      appLeaves = mergedLeaves;
       saveLeaves();
       hasLeavesChanged = true;
     }
   }
 
-  // 6. Merge Chat Messages
+  // 6. Merge Chat Messages (Respect chatClearedAt)
+  const cloudClearedAt = Number(data.chatClearedAt) || 0;
+  const localClearedAt = Number(localStorage.getItem('korenevo_chat_cleared_at')) || 0;
+  const effectiveClearedAt = Math.max(cloudClearedAt, localClearedAt);
+  if (effectiveClearedAt > 0) {
+    localStorage.setItem('korenevo_chat_cleared_at', effectiveClearedAt);
+  }
+
   if (Array.isArray(data.chat)) {
-    if (JSON.stringify(appChatMessages) !== JSON.stringify(data.chat)) {
-      appChatMessages = data.chat;
+    const validChat = data.chat.filter(m => {
+      if (!m || !m.id || deletedChat.includes(m.id)) return false;
+      const msgTime = m.createdAtMs || (m.id.startsWith('msg_') ? parseInt(m.id.split('_')[1]) : 0);
+      if (effectiveClearedAt > 0 && msgTime < effectiveClearedAt && !m.id.startsWith('msg_sys_')) {
+        return false;
+      }
+      return true;
+    });
+
+    if (JSON.stringify(appChatMessages) !== JSON.stringify(validChat)) {
+      appChatMessages = validChat;
       saveChatMessages();
       hasChatChanged = true;
       if (currentTab === 'chat') {
@@ -926,12 +1333,39 @@ function applyCloudData(data) {
     }
   }
 
-  // 7. Ticker
+  // 7. Merge Notifications
+  if (Array.isArray(data.notifications)) {
+    const notifMap = new Map();
+    data.notifications.forEach(cn => {
+      if (cn && cn.id) notifMap.set(cn.id, cn);
+    });
+    appNotifications.forEach(ln => {
+      if (ln && ln.id) {
+        const inCloud = notifMap.get(ln.id);
+        if (inCloud) {
+          const readBy = Array.from(new Set([...(inCloud.readBy || []), ...(ln.readBy || [])]));
+          notifMap.set(ln.id, { ...inCloud, ...ln, readBy });
+        } else {
+          notifMap.set(ln.id, ln);
+        }
+      }
+    });
+    appNotifications = Array.from(notifMap.values()).sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0)).slice(0, 60);
+    saveNotifications();
+    updateNotificationsUI();
+  }
+
+  // 8. Ticker
   if (data.ticker) {
-    if (data.ticker.text) localStorage.setItem('korenevo_ticker_text', data.ticker.text);
-    if (data.ticker.release) localStorage.setItem('korenevo_ticker_release', data.ticker.release);
-    if (data.ticker.fuel) localStorage.setItem('korenevo_ticker_fuel', data.ticker.fuel);
-    loadTickerSettings();
+    const localTickerUpdated = Number(localStorage.getItem('korenevo_ticker_updated_at')) || 0;
+    const cloudTickerUpdated = Number(data.ticker.updatedAt) || 0;
+    if (cloudTickerUpdated >= localTickerUpdated || localTickerUpdated === 0) {
+      if (data.ticker.text) localStorage.setItem('korenevo_ticker_text', data.ticker.text);
+      if (data.ticker.release) localStorage.setItem('korenevo_ticker_release', data.ticker.release);
+      if (data.ticker.fuel) localStorage.setItem('korenevo_ticker_fuel', data.ticker.fuel);
+      if (cloudTickerUpdated > 0) localStorage.setItem('korenevo_ticker_updated_at', cloudTickerUpdated);
+      loadTickerSettings();
+    }
   }
 
   updateBadges();
@@ -1076,6 +1510,23 @@ function loadFromStorage() {
       appChatMessages = DEFAULT_CHAT_MESSAGES;
       saveChatMessages();
     }
+
+    // Load Notifications
+    loadNotifications();
+
+    // Respect local chatClearedAt
+    const localClearedAt = Number(localStorage.getItem('korenevo_chat_cleared_at')) || 0;
+    if (localClearedAt > 0) {
+      appChatMessages = appChatMessages.filter(m => (m.createdAtMs || 0) >= localClearedAt || m.id.startsWith('msg_sys_'));
+    }
+
+    // Filter out locally deleted items
+    const delReports = getDeletedIds('reports');
+    if (delReports.length > 0) appReports = appReports.filter(r => !delReports.includes(r.id));
+    const delLeaves = getDeletedIds('leaves');
+    if (delLeaves.length > 0) appLeaves = appLeaves.filter(l => !delLeaves.includes(l.id));
+    const delChat = getDeletedIds('chat');
+    if (delChat.length > 0) appChatMessages = appChatMessages.filter(m => !delChat.includes(m.id));
 
     const storedUser = localStorage.getItem('korenevo_current_user');
     if (storedUser) {
@@ -1768,8 +2219,10 @@ function deleteReport(id) {
   if (!rep) return;
 
   const canDelete = currentUser && (
+    checkIsAdmin(currentUser) ||
     currentUser.role === 'director' || 
     currentUser.role === 'dispatch' ||
+    currentUser.role === 'hr' ||
     currentUser.id === rep.driverId || 
     currentUser.name.toLowerCase() === rep.driverName.toLowerCase()
   );
@@ -1780,12 +2233,12 @@ function deleteReport(id) {
   }
 
   if (confirm(`Вы действительно хотите удалить отчет водителя «${rep.driverName}» по маршруту ${rep.route}?`)) {
+    addDeletedId('reports', id);
     appReports = appReports.filter(r => r.id !== id);
     saveReports();
     renderReports();
     updateBadges();
-    showToast('Отчет успешно удален из системы.', 'success');
-    addDeletedId('reports', id);
+    showToast('Отчет успешно удален из системы на всех устройствах.', 'success');
     syncToCloud();
   }
 }
@@ -1861,10 +2314,25 @@ function promptApproveReport(id) {
     rep.status = 'approved';
     rep.reviewedBy = `${currentUser.name} (${ROLES[currentUser.role]?.name || 'Диспетчер'})`;
     rep.reviewComment = comment;
+    rep.reviewedAt = Date.now();
     saveReports();
     renderReports();
     updateBadges();
-    showToast('Отчет водителя успешно одобрен!', 'success');
+
+    // Create In-App Notification for Driver
+    createNotification({
+      targetUserId: rep.driverId,
+      targetUserName: rep.driverName,
+      title: 'Отчёт о смене принят ✅',
+      message: `Ваш путевой отчёт (Борт: ${rep.busInfo}, Маршрут: ${rep.route}) одобрен. Диспетчер: ${currentUser.name}. Резолюция: «${comment}»`,
+      type: 'success'
+    });
+
+    // Send announcement to radio channel
+    sendSystemRadioMessage(`📻 [Диспетчерская]: Отчёт о смене водителя ${rep.driverName} (Борт: ${rep.busInfo}, Маршрут: ${rep.route}) ПРИНЯТ. Проверил: ${currentUser.name}.`);
+
+    showToast('Отчет водителя успешно одобрен и зафиксирован в системе!', 'success');
+    syncToCloud();
   }
 }
 
@@ -1877,10 +2345,25 @@ function promptRejectReport(id) {
     rep.status = 'rejected';
     rep.reviewedBy = `${currentUser.name} (${ROLES[currentUser.role]?.name || 'Диспетчер'})`;
     rep.reviewComment = comment;
+    rep.reviewedAt = Date.now();
     saveReports();
     renderReports();
     updateBadges();
-    showToast('Отчет отклонен с замечанием.', 'warning');
+
+    // Create In-App Notification for Driver
+    createNotification({
+      targetUserId: rep.driverId,
+      targetUserName: rep.driverName,
+      title: 'Отчёт о смене отклонён ❌',
+      message: `Ваш путевой отчёт (Борт: ${rep.busInfo}, Маршрут: ${rep.route}) отклонён. Причина: «${comment}». Диспетчер: ${currentUser.name}.`,
+      type: 'danger'
+    });
+
+    // Send announcement to radio channel
+    sendSystemRadioMessage(`📻 [Диспетчерская]: Отчёт о смене водителя ${rep.driverName} (Маршрут: ${rep.route}) ОТКЛОНЁН. Причина: «${comment}».`);
+
+    showToast('Отчет отклонен и направлен водителю на доработку.', 'warning');
+    syncToCloud();
   }
 }
 
@@ -2036,6 +2519,7 @@ function deleteLeave(id) {
   if (!item) return;
 
   const canDelete = currentUser && (
+    checkIsAdmin(currentUser) ||
     currentUser.role === 'director' || 
     currentUser.role === 'hr' || 
     currentUser.id === item.driverId || 
@@ -2048,12 +2532,12 @@ function deleteLeave(id) {
   }
 
   if (confirm(`Удалить заявление на отгул сотрудника «${item.driverName}»?`)) {
+    addDeletedId('leaves', id);
     appLeaves = appLeaves.filter(l => l.id !== id);
     saveLeaves();
     renderLeaves();
     updateBadges();
-    showToast('Заявление на отгул удалено.', 'success');
-    addDeletedId('leaves', id);
+    showToast('Заявление на отгул удалено на всех устройствах.', 'success');
     syncToCloud();
   }
 }
@@ -2121,10 +2605,20 @@ function promptApproveLeave(id) {
     item.status = 'approved';
     item.reviewedBy = `${currentUser.name} (${ROLES[currentUser.role]?.name || 'Кадры'})`;
     item.reviewComment = comment;
+    item.reviewedAt = Date.now();
     saveLeaves();
     renderLeaves();
     updateBadges();
-    showToast('Заявление на отгул согласовано!', 'success');
+
+    createNotification({
+      targetUserId: item.driverId,
+      targetUserName: item.driverName,
+      title: 'Заявление на отгул согласовано ✅',
+      message: `Ваше заявление на период ${item.dateStart} — ${item.dateEnd} согласовано отделом кадров (${currentUser.name}). Резолюция: «${comment}»`,
+      type: 'success'
+    });
+
+    showToast('Заявление на отгул согласовано и сотруднику отправлено уведомление!', 'success');
     syncToCloud();
   }
 }
@@ -2138,10 +2632,20 @@ function promptRejectLeave(id) {
     item.status = 'rejected';
     item.reviewedBy = `${currentUser.name} (${ROLES[currentUser.role]?.name || 'Кадры'})`;
     item.reviewComment = comment;
+    item.reviewedAt = Date.now();
     saveLeaves();
     renderLeaves();
     updateBadges();
-    showToast('Заявление отклонено.', 'warning');
+
+    createNotification({
+      targetUserId: item.driverId,
+      targetUserName: item.driverName,
+      title: 'Заявление на отгул отклонено ❌',
+      message: `Ваше заявление на период ${item.dateStart} — ${item.dateEnd} отклонено. Причина: «${comment}». Отдел кадров: ${currentUser.name}.`,
+      type: 'danger'
+    });
+
+    showToast('Заявление отклонено, сотруднику направлено уведомление.', 'warning');
     syncToCloud();
   }
 }
@@ -2934,11 +3438,16 @@ function loadTickerSettings() {
   const release = localStorage.getItem('korenevo_ticker_release') || 'Выпуск на линию: 100%';
   const fuel = localStorage.getItem('korenevo_ticker_fuel') || 'Топливо: В норме';
 
+  const elContents = document.querySelectorAll('.ticker-text-content');
+  if (elContents.length > 0) {
+    elContents.forEach(el => el.textContent = text);
+  }
   const elText = document.getElementById('ticker-text');
+  if (elText) elText.textContent = text;
+
   const elRelease = document.getElementById('ticker-release');
   const elFuel = document.getElementById('ticker-fuel');
 
-  if (elText) elText.textContent = text;
   if (elRelease) elRelease.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i>${release}`;
   if (elFuel) elFuel.innerHTML = `<i class="fa-solid fa-gas-pump text-amber-400 mr-1"></i>${fuel}`;
 }
@@ -2963,12 +3472,33 @@ function handleSaveTicker(e) {
   const release = document.getElementById('admin-release-input').value.trim();
   const fuel = document.getElementById('admin-fuel-input').value.trim();
 
+  const now = Date.now();
   if (text) localStorage.setItem('korenevo_ticker_text', text);
   if (release) localStorage.setItem('korenevo_ticker_release', release);
   if (fuel) localStorage.setItem('korenevo_ticker_fuel', fuel);
+  localStorage.setItem('korenevo_ticker_updated_at', now);
 
   loadTickerSettings();
-  showToast('Сводка диспетчерской службы успешно обновлена на сайте!', 'success');
+  showToast('Сводка диспетчерской сохранена и транслируется в бегущей строке!', 'success');
+
+  // Direct sync to Firebase RTDB for instant broadcast
+  const baseUrl = getFirebaseUrl();
+  if (baseUrl) {
+    const endpoint = baseUrl.endsWith('.json') ? baseUrl : `${baseUrl}/patp_db/ticker.json`;
+    fetch(endpoint, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: text || 'Уважаемые водители! Все путевые листы сдавать через раздел «Отчеты».',
+        release: release || 'Выпуск на линию: 100%',
+        fuel: fuel || 'Топливо: В норме',
+        updatedAt: now,
+        updatedBy: currentUser ? currentUser.name : 'Диспетчер'
+      })
+    }).catch(err => console.error('Direct ticker sync failed:', err));
+  }
+
+  syncToCloud();
 }
 
 // --- Admin: Backup & Export/Import ---
@@ -3577,7 +4107,8 @@ function handleSendChatMessage(e) {
     userRole: senderRole,
     userAvatar: senderAvatar,
     text: text,
-    timestamp: `${dateStr} ${timeStr}`
+    timestamp: `${dateStr} ${timeStr}`,
+    createdAtMs: Date.now()
   };
 
   input.value = '';
@@ -3620,27 +4151,53 @@ function deleteChatMessage(msgId) {
   }
 }
 
-function clearChatConfirm() {
+async function clearChatConfirm() {
   if (!checkIsAdmin(currentUser)) {
     showToast('Очистить чат может только Руководитель предприятия!', 'error');
     return;
   }
 
-  if (confirm('Вы уверены, что хотите полностью очистить историю общего чата предприятия?')) {
-    appChatMessages = [
-      {
-        id: 'msg_' + Date.now(),
-        userId: currentUser.id,
-        userName: currentUser.name,
-        userRole: currentUser.role,
-        userAvatar: currentUser.avatar || 'logo.jpg',
-        text: 'История радиоканала очищена администрацией предприятия. Связь работает в штатном режиме.',
-        timestamp: 'Только что'
-      }
-    ];
+  if (confirm('Вы уверены, что хотите полностью очистить историю общего чата предприятия на всех устройствах?')) {
+    const clearTimestamp = Date.now();
+    localStorage.setItem('korenevo_chat_cleared_at', clearTimestamp);
+
+    const systemNotice = {
+      id: 'msg_sys_' + clearTimestamp,
+      userId: currentUser.id,
+      userName: currentUser.name,
+      userRole: currentUser.role,
+      userAvatar: currentUser.avatar || 'logo.jpg',
+      text: `История радиоканала очищена руководителем предприятия (${currentUser.name}). Эфир чист и работает в штатном режиме.`,
+      timestamp: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+      createdAtMs: clearTimestamp
+    };
+
+    appChatMessages = [systemNotice];
     saveChatMessages();
     renderChat();
-    showToast('История чата очищена.', 'warning');
+    showToast('История чата очищена на всех устройствах!', 'warning');
+
+    // Immediately broadcast clearTimestamp and cleared chat to Firebase
+    const baseUrl = getFirebaseUrl();
+    if (baseUrl) {
+      const endpoint = baseUrl.endsWith('.json') ? baseUrl : `${baseUrl}/patp_db`;
+      try {
+        await Promise.all([
+          fetch(`${endpoint}/chatClearedAt.json`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(clearTimestamp)
+          }),
+          fetch(`${endpoint}/chat.json`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(appChatMessages)
+          })
+        ]);
+      } catch (err) {
+        console.error('Error broadcasting chat clear:', err);
+      }
+    }
     syncToCloud();
   }
 }
@@ -3725,6 +4282,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   checkUrlHashForDb();
   loadFromStorage();
   loadTickerSettings();
+  updateNotificationsUI();
   startDepotClock();
   updateAuthUI();
   updateOnlineRoster();

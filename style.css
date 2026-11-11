@@ -137,3 +137,48 @@ body {
 #chat-messages-container {
   -webkit-overflow-scrolling: touch;
 }
+
+/* Running Ticker Marquee */
+.ticker-marquee-container {
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+  mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
+}
+
+.ticker-marquee-track {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: tickerContinuousScroll 32s linear infinite;
+  will-change: transform;
+}
+
+.ticker-marquee-container:hover .ticker-marquee-track {
+  animation-play-state: paused;
+}
+
+@keyframes tickerContinuousScroll {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* Modal pop-in animation */
+@keyframes modalPopIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-scale-up {
+  animation: modalPopIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
