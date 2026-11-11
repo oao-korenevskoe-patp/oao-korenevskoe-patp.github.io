@@ -151,7 +151,7 @@
       <button id="tab-btn-chat" onclick="switchTab('chat')" class="flex-1 py-3 px-2 sm:px-4 rounded-lg font-semibold text-xs sm:text-base flex items-center justify-center gap-1.5 sm:gap-2 transition duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 whitespace-nowrap">
         <i class="fa-solid fa-comments text-emerald-400"></i>
         <span>Общий чат</span>
-        <span id="badge-chat-count" class="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-500/30 text-emerald-300 font-mono border border-emerald-500/40">4</span>
+        <span id="badge-chat-count" class="hidden ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-rose-600 text-white font-bold font-mono border border-rose-500/40 shadow-sm animate-pulse">0</span>
       </button>
     </div>
 
@@ -322,6 +322,16 @@
         <!-- Chat Messages Container (min-h-0 is essential for iOS Safari flex scrolling) -->
         <div id="chat-messages-container" class="flex-1 min-h-0 p-3 sm:p-5 overflow-y-auto space-y-3">
           <!-- Injected via JavaScript -->
+        </div>
+
+        <!-- Real-Time Typing Indicator Bar -->
+        <div id="chat-typing-indicator" class="hidden px-4 py-1.5 bg-slate-900/90 border-t border-sky-900/50 text-[11px] text-sky-300 flex items-center gap-2 select-none">
+          <div class="flex items-center space-x-1 shrink-0">
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+          </div>
+          <span id="chat-typing-text" class="italic truncate text-slate-300"></span>
         </div>
 
         <!-- Chat Input Footer -->

@@ -406,6 +406,15 @@ let appFleet = [];
 let appChatMessages = [];
 
 
+// ================= REALTIME MULTI-TAB & SESSION BUS =================
+const CLIENT_SESSION_ID = 'sess_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
+const patpRealtimeBus = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('patp_realtime_bus') : null;
+const activeTypers = new Map();
+let chatEventSource = null;
+let typingEventSource = null;
+let typingDebounceTimer = null;
+let isCurrentlyTyping = false;
+
 // ================= DELETION TRACKING & NOTIFICATIONS HELPERS =================
 let appNotifications = [];
 
@@ -459,6 +468,201 @@ function mergeDeletedIdsFromCloud(cloudDeleted) {
       } catch (e) {}
     }
   });
+}
+
+
+// ================= CHAT REALTIME & UNREAD HELPERS =================
+function getChatLastReadTime() {
+  return Number(localStorage.getItem('korenevo_chat_last_read_time')) || 0;
+}
+
+function setChatLastReadTime(timestamp = Date.now()) {
+  localStorage.setItem('korenevo_chat_last_read_time', timestamp);
+  updateChatUnreadBadge();
+
+  if (currentUser && currentUser.id) {
+    const baseUrl = getFirebaseUrl();
+    if (baseUrl) {
+      const endpoint = baseUrl.endsWith('.json') ? baseUrl : `${baseUrl}/users_read_chat/${currentUser.id}.json`;
+      fetch(endpoint, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(timestamp)
+      }).catch(() => {});
+    }
+  }
+
+  if (patpRealtimeBus) {
+    patpRealtimeBus.postMessage({ type: 'CHAT_READ_UPDATED', timestamp, userId: currentUser ? currentUser.id : null });
+  }
+}
+
+function calculateChatUnreadCount() {
+  const lastRead = getChatLastReadTime();
+  const clearedAt = Number(localStorage.getItem('korenevo_chat_cleared_at')) || 0;
+  const effectiveThreshold = Math.max(lastRead, clearedAt);
+  const deletedChat = getDeletedIds('chat');
+
+  const unread = appChatMessages.filter(m => {
+    if (!m || !m.id || deletedChat.includes(m.id)) return false;
+    if (currentUser && (m.userId === currentUser.id || (m.userName && m.userName.toLowerCase() === currentUser.name.toLowerCase()))) {
+      return false;
+    }
+    const msgTime = m.createdAtMs || (m.id.startsWith('msg_') ? parseInt(m.id.split('_')[1]) : 0);
+    return msgTime > effectiveThreshold;
+  });
+
+  return unread.length;
+}
+
+function updateChatUnreadBadge() {
+  const unreadCount = (typeof currentTab !== 'undefined' && currentTab === 'chat') ? 0 : calculateChatUnreadCount();
+
+  const tabBadge = document.getElementById('badge-chat-count');
+  if (tabBadge) {
+    if (unreadCount > 0) {
+      tabBadge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+      tabBadge.className = 'ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-rose-600 text-white font-bold font-mono border border-rose-500/40 shadow-sm animate-pulse';
+      tabBadge.classList.remove('hidden');
+    } else {
+      tabBadge.textContent = '0';
+      tabBadge.classList.add('hidden');
+    }
+  }
+
+  const floatBadge = document.getElementById('floating-chat-count');
+  if (floatBadge) {
+    if (unreadCount > 0) {
+      floatBadge.textContent = `+${unreadCount}`;
+      floatBadge.className = 'px-2 py-0.5 rounded-full text-xs bg-rose-600 text-white font-mono font-bold border border-rose-400 shadow-md animate-pulse';
+    } else {
+      floatBadge.textContent = appChatMessages.length;
+      floatBadge.className = 'px-2 py-0.5 rounded-full text-xs bg-slate-950/80 text-emerald-300 font-mono border border-emerald-400/40';
+    }
+  }
+}
+
+// Typing Indicator Dispatcher
+function notifyTypingStart() {
+  if (!isCurrentlyTyping) {
+    isCurrentlyTyping = true;
+    const typerData = {
+      userId: currentUser ? currentUser.id : 'guest_' + CLIENT_SESSION_ID,
+      userName: currentUser ? currentUser.name : (localStorage.getItem('korenevo_guest_chat_name') || 'Посетитель сайта'),
+      userRole: currentUser ? currentUser.role : 'guest',
+      sessionId: CLIENT_SESSION_ID,
+      timestamp: Date.now()
+    };
+
+    const baseUrl = getFirebaseUrl();
+    if (baseUrl) {
+      fetch(`${baseUrl}/typing/${CLIENT_SESSION_ID}.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(typerData)
+      }).catch(() => {});
+    }
+
+    if (patpRealtimeBus) {
+      patpRealtimeBus.postMessage({ type: 'TYPING_LOCAL', sessionId: CLIENT_SESSION_ID, data: typerData });
+    }
+  }
+
+  if (typingDebounceTimer) clearTimeout(typingDebounceTimer);
+  typingDebounceTimer = setTimeout(() => {
+    notifyTypingStop();
+  }, 2800);
+}
+
+function notifyTypingStop() {
+  if (isCurrentlyTyping) {
+    isCurrentlyTyping = false;
+    if (typingDebounceTimer) clearTimeout(typingDebounceTimer);
+
+    const baseUrl = getFirebaseUrl();
+    if (baseUrl) {
+      fetch(`${baseUrl}/typing/${CLIENT_SESSION_ID}.json`, {
+        method: 'DELETE'
+      }).catch(() => {});
+    }
+
+    if (patpRealtimeBus) {
+      patpRealtimeBus.postMessage({ type: 'TYPING_LOCAL', sessionId: CLIENT_SESSION_ID, data: null });
+    }
+  }
+}
+
+function renderTypingIndicator() {
+  const container = document.getElementById('chat-typing-indicator');
+  const textEl = document.getElementById('chat-typing-text');
+  if (!container || !textEl) return;
+
+  const now = Date.now();
+  for (const [id, typer] of activeTypers.entries()) {
+    if (now - (typer.timestamp || 0) > 4200) {
+      activeTypers.delete(id);
+    }
+  }
+
+  if (activeTypers.size === 0) {
+    container.classList.add('hidden');
+    textEl.textContent = '';
+  } else {
+    const list = Array.from(activeTypers.values());
+    if (list.length === 1) {
+      textEl.textContent = `«${list[0].userName}» печатает сообщение...`;
+    } else {
+      textEl.textContent = `«${list[0].userName}» и ещё ${list.length - 1} сотрудн. печатают...`;
+    }
+    container.classList.remove('hidden');
+  }
+}
+
+// Inter-tab message listener
+if (patpRealtimeBus) {
+  patpRealtimeBus.onmessage = (event) => {
+    const msg = event.data;
+    if (!msg || !msg.type) return;
+
+    if (msg.type === 'CHAT_MSG_DELETED') {
+      addDeletedId('chat', msg.msgId);
+      appChatMessages = appChatMessages.filter(m => m.id !== msg.msgId);
+      saveChatMessages();
+      const el = document.getElementById('chat-msg-' + msg.msgId);
+      if (el) {
+        el.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+        el.style.opacity = '0';
+        el.style.transform = 'scale(0.95)';
+        setTimeout(() => el.remove(), 200);
+      }
+      updateChatUnreadBadge();
+    } else if (msg.type === 'CHAT_CLEARED') {
+      handleIncomingChatCleared(msg.clearedAt);
+    } else if (msg.type === 'CHAT_NEW_MSG') {
+      if (!appChatMessages.some(m => m.id === msg.message.id)) {
+        appChatMessages.push(msg.message);
+        saveChatMessages();
+        if (currentTab === 'chat') {
+          appendSingleChatMessage(msg.message, true);
+          setChatLastReadTime(Date.now());
+        } else {
+          updateChatUnreadBadge();
+        }
+      }
+    } else if (msg.type === 'CHAT_READ_UPDATED') {
+      localStorage.setItem('korenevo_chat_last_read_time', msg.timestamp);
+      updateChatUnreadBadge();
+    } else if (msg.type === 'TYPING_LOCAL') {
+      if (msg.sessionId !== CLIENT_SESSION_ID) {
+        if (!msg.data) {
+          activeTypers.delete(msg.sessionId);
+        } else {
+          activeTypers.set(msg.sessionId, msg.data);
+        }
+        renderTypingIndicator();
+      }
+    }
+  };
 }
 
 function loadNotifications() {
@@ -1459,6 +1663,322 @@ function renderAdminCloudView() {
   updateCloudStatusUI();
 }
 
+
+// ================= SSE STREAMING ENGINE (SERVER-SENT EVENTS) =================
+function initRealtimeStreaming() {
+  const baseUrl = getFirebaseUrl();
+  if (!baseUrl || typeof EventSource === 'undefined') return;
+
+  // 1. Stream on /patp_db.json
+  try {
+    if (chatEventSource) {
+      chatEventSource.close();
+      chatEventSource = null;
+    }
+    const endpoint = baseUrl.endsWith('.json') ? baseUrl : `${baseUrl}/patp_db.json`;
+    chatEventSource = new EventSource(endpoint);
+
+    chatEventSource.addEventListener('put', (e) => {
+      try {
+        const payload = JSON.parse(e.data);
+        if (!payload) return;
+        handleRealtimeStreamPut(payload.path, payload.data);
+      } catch (err) {
+        console.warn('SSE parse error:', err);
+      }
+    });
+
+    chatEventSource.addEventListener('patch', (e) => {
+      try {
+        const payload = JSON.parse(e.data);
+        if (!payload) return;
+        handleRealtimeStreamPatch(payload.path, payload.data);
+      } catch (err) {
+        console.warn('SSE patch error:', err);
+      }
+    });
+
+    chatEventSource.onerror = () => {
+      // EventSource auto-reconnects natively
+    };
+  } catch (err) {
+    console.warn('Could not establish chat EventSource:', err);
+  }
+
+  // 2. Stream on /typing.json for sub-second typing indicator
+  try {
+    if (typingEventSource) {
+      typingEventSource.close();
+      typingEventSource = null;
+    }
+    const typingEndpoint = `${baseUrl}/typing.json`;
+    typingEventSource = new EventSource(typingEndpoint);
+
+    typingEventSource.addEventListener('put', (e) => {
+      try {
+        const payload = JSON.parse(e.data);
+        if (!payload) return;
+        handleRealtimeTypingPut(payload.path, payload.data);
+      } catch (err) {}
+    });
+  } catch (err) {
+    console.warn('Could not establish typing EventSource:', err);
+  }
+}
+
+function handleRealtimeStreamPut(path, data) {
+  if (!path || path === '/') {
+    if (data) {
+      applyCloudData(data);
+      updateChatUnreadBadge();
+    }
+  } else if (path === '/chat') {
+    if (Array.isArray(data)) {
+      handleIncomingChatStream(data);
+    }
+  } else if (path === '/chatClearedAt') {
+    handleIncomingChatCleared(Number(data) || Date.now());
+  } else if (path.startsWith('/deleted_ids')) {
+    if (data) {
+      if (path === '/deleted_ids' && typeof data === 'object') {
+        mergeDeletedIdsFromCloud(data);
+      } else if (path === '/deleted_ids/chat' && Array.isArray(data)) {
+        mergeDeletedIdsFromCloud({ chat: data });
+      }
+      applyDeletionsToDom();
+      updateChatUnreadBadge();
+    }
+  } else if (path === '/ticker') {
+    if (data) {
+      if (data.text) localStorage.setItem('korenevo_ticker_text', data.text);
+      if (data.release) localStorage.setItem('korenevo_ticker_release', data.release);
+      if (data.fuel) localStorage.setItem('korenevo_ticker_fuel', data.fuel);
+      if (data.updatedAt) localStorage.setItem('korenevo_ticker_updated_at', data.updatedAt);
+      loadTickerSettings();
+    }
+  } else if (path === '/notifications') {
+    if (Array.isArray(data)) {
+      appNotifications = data;
+      saveNotifications();
+      updateNotificationsUI();
+    }
+  } else if (path === '/reports') {
+    if (Array.isArray(data)) {
+      appReports = data;
+      saveReports();
+      if (currentTab === 'reports') renderReports();
+      updateBadges();
+    }
+  } else if (path === '/leaves') {
+    if (Array.isArray(data)) {
+      appLeaves = data;
+      saveLeaves();
+      if (currentTab === 'leaves') renderLeaves();
+      updateBadges();
+    }
+  }
+}
+
+function handleRealtimeStreamPatch(path, data) {
+  if (data && typeof data === 'object') {
+    if (data.chat && Array.isArray(data.chat)) {
+      handleIncomingChatStream(data.chat);
+    }
+    if (data.chatClearedAt) {
+      handleIncomingChatCleared(Number(data.chatClearedAt) || Date.now());
+    }
+    if (data.deleted_ids) {
+      mergeDeletedIdsFromCloud(data.deleted_ids);
+      applyDeletionsToDom();
+      updateChatUnreadBadge();
+    }
+    if (data.ticker) {
+      if (data.ticker.text) localStorage.setItem('korenevo_ticker_text', data.ticker.text);
+      loadTickerSettings();
+    }
+  }
+}
+
+function handleRealtimeTypingPut(path, data) {
+  if (!path || path === '/') {
+    activeTypers.clear();
+    if (data && typeof data === 'object') {
+      Object.entries(data).forEach(([sessionId, typer]) => {
+        if (typer && sessionId !== CLIENT_SESSION_ID) {
+          if (!currentUser || typer.userId !== currentUser.id) {
+            activeTypers.set(sessionId, typer);
+          }
+        }
+      });
+    }
+  } else {
+    const sessionId = path.replace(/^\//, '');
+    if (sessionId === CLIENT_SESSION_ID) return;
+
+    if (!data) {
+      activeTypers.delete(sessionId);
+    } else {
+      if (!currentUser || data.userId !== currentUser.id) {
+        activeTypers.set(sessionId, data);
+      }
+    }
+  }
+  renderTypingIndicator();
+}
+
+function applyDeletionsToDom() {
+  const deletedChat = getDeletedIds('chat');
+  deletedChat.forEach(msgId => {
+    const el = document.getElementById('chat-msg-' + msgId);
+    if (el) {
+      el.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+      el.style.opacity = '0';
+      el.style.transform = 'scale(0.95)';
+      setTimeout(() => el.remove(), 200);
+    }
+  });
+  if (deletedChat.length > 0) {
+    appChatMessages = appChatMessages.filter(m => !deletedChat.includes(m.id));
+    saveChatMessages();
+  }
+}
+
+function handleIncomingChatStream(incomingChat) {
+  const deletedChat = getDeletedIds('chat');
+  const clearedAt = Number(localStorage.getItem('korenevo_chat_cleared_at')) || 0;
+
+  const validNewChat = incomingChat.filter(m => {
+    if (!m || !m.id || deletedChat.includes(m.id)) return false;
+    const msgTime = m.createdAtMs || (m.id.startsWith('msg_') ? parseInt(m.id.split('_')[1]) : 0);
+    if (clearedAt > 0 && msgTime < clearedAt && !m.id.startsWith('msg_sys_')) return false;
+    return true;
+  });
+
+  const prevIds = new Set(appChatMessages.map(m => m.id));
+  const newIds = new Set(validNewChat.map(m => m.id));
+
+  // Detect and animate out deleted messages from DOM immediately
+  appChatMessages.forEach(m => {
+    if (!newIds.has(m.id)) {
+      addDeletedId('chat', m.id);
+      const el = document.getElementById('chat-msg-' + m.id);
+      if (el) {
+        el.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+        el.style.opacity = '0';
+        el.style.transform = 'scale(0.95)';
+        setTimeout(() => el.remove(), 200);
+      }
+    }
+  });
+
+  const brandNewMessages = validNewChat.filter(m => !prevIds.has(m.id));
+  appChatMessages = validNewChat;
+  saveChatMessages();
+
+  if (currentTab === 'chat') {
+    if (brandNewMessages.length > 0) {
+      brandNewMessages.forEach(msg => {
+        appendSingleChatMessage(msg, true);
+      });
+    } else {
+      renderChat();
+    }
+    setChatLastReadTime(Date.now());
+  } else {
+    updateChatUnreadBadge();
+
+    if (brandNewMessages.length > 0) {
+      const otherMsgs = brandNewMessages.filter(m => m.userId !== (currentUser ? currentUser.id : null));
+      if (otherMsgs.length > 0) {
+        const latest = otherMsgs[otherMsgs.length - 1];
+        showToast(`💬 Радиоканал (${latest.userName}): ${latest.text.length > 45 ? latest.text.slice(0, 45) + '...' : latest.text}`, 'info', 4000);
+        playNotificationSound();
+      }
+    }
+  }
+
+  updateChatUnreadBadge();
+}
+
+function handleIncomingChatCleared(clearedAt) {
+  localStorage.setItem('korenevo_chat_cleared_at', clearedAt);
+  localStorage.setItem('korenevo_chat_last_read_time', clearedAt);
+
+  appChatMessages = appChatMessages.filter(m => {
+    const msgTime = m.createdAtMs || (m.id.startsWith('msg_') ? parseInt(m.id.split('_')[1]) : 0);
+    return msgTime >= clearedAt || m.id.startsWith('msg_sys_');
+  });
+  saveChatMessages();
+
+  if (currentTab === 'chat') {
+    renderChat();
+  }
+  updateChatUnreadBadge();
+  showToast('История радиоканала очищена администрацией предприятия.', 'warning');
+}
+
+function appendSingleChatMessage(msg, animate = true) {
+  const container = document.getElementById('chat-messages-container');
+  if (!container) return;
+
+  if (document.getElementById('chat-msg-' + msg.id)) return;
+
+  const emptyState = container.querySelector('.empty-chat-state');
+  if (emptyState) emptyState.remove();
+
+  const isScrolledToBottom = (container.scrollHeight - container.scrollTop - container.clientHeight) < 160;
+
+  const roleConfig = ROLES[msg.userRole] || (msg.userRole === 'guest' ? {
+    name: 'Гость',
+    badgeClass: 'bg-slate-800 text-slate-300 border-slate-700'
+  } : ROLES.driver);
+
+  const isAuthor = currentUser && (
+    (currentUser.id && currentUser.id === msg.userId) ||
+    (currentUser.name && currentUser.name.toLowerCase() === msg.userName.toLowerCase())
+  );
+  const isAdmin = currentUser && checkIsAdmin(currentUser);
+  const canDelete = isAuthor || isAdmin;
+
+  const msgDiv = document.createElement('div');
+  msgDiv.id = 'chat-msg-' + msg.id;
+  msgDiv.dataset.msgId = msg.id;
+  msgDiv.className = `flex items-start space-x-3 p-3 sm:p-3.5 rounded-2xl bg-slate-900/70 border border-sky-900/40 hover:border-sky-700/60 transition group ${animate ? 'animate-scale-up' : ''}`;
+
+  msgDiv.innerHTML = `
+    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden bg-slate-950 border border-sky-400/40 flex-shrink-0 shadow-md">
+      <img src="${msg.userAvatar || 'logo.jpg'}" alt="${escapeHtml(msg.userName)}" class="w-full h-full object-cover">
+    </div>
+    <div class="flex-grow min-w-0">
+      <div class="flex flex-wrap items-center justify-between gap-1.5 mb-1.5">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="font-bold text-white text-xs sm:text-sm tracking-wide">${escapeHtml(msg.userName)}</span>
+          <span class="px-2 py-0.5 rounded-full font-semibold border text-[10px] ${roleConfig.badgeClass}">
+            ${roleConfig.name}
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-[11px] text-slate-400 font-mono">${escapeHtml(msg.timestamp)}</span>
+          ${canDelete ? `
+            <button onclick="deleteChatMessage('${msg.id}')" class="opacity-70 group-hover:opacity-100 text-rose-400 hover:text-rose-300 text-xs px-1.5 py-0.5 rounded hover:bg-rose-950/60 transition cursor-pointer" title="Удалить сообщение">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          ` : ''}
+        </div>
+      </div>
+      <div class="text-xs sm:text-sm text-slate-200 leading-relaxed break-words whitespace-pre-wrap">
+        ${escapeHtml(msg.text)}
+      </div>
+    </div>
+  `;
+
+  container.appendChild(msgDiv);
+
+  if (isScrolledToBottom) {
+    container.scrollTop = container.scrollHeight;
+  }
+}
+
 function startCloudSyncLoop() {
   fetchFromCloud(true);
   setInterval(() => {
@@ -1667,11 +2187,15 @@ function switchTab(tabId) {
   if (tabId === 'leaves') renderLeaves();
   if (tabId === 'routes') renderRoutes();
   if (tabId === 'chat') {
+    setChatLastReadTime(Date.now());
+    updateChatUnreadBadge();
     renderChat();
     setTimeout(() => {
       const c = document.getElementById('chat-messages-container');
       if (c) c.scrollTop = c.scrollHeight;
     }, 60);
+  } else {
+    updateChatUnreadBadge();
   }
 }
 
@@ -1792,10 +2316,7 @@ function updateBadges() {
     }
   }
 
-  const chatBadge = document.getElementById('badge-chat-count');
-  if (chatBadge) chatBadge.textContent = appChatMessages.length;
-  const floatingCount = document.getElementById('floating-chat-count');
-  if (floatingCount) floatingCount.textContent = appChatMessages.length;
+  updateChatUnreadBadge();
 
   renderChatInput();
   updateOnlineRoster();
@@ -3980,7 +4501,7 @@ function renderChat() {
     const canDelete = isAuthor || isAdmin;
 
     return `
-      <div class="flex items-start space-x-3 p-3 sm:p-3.5 rounded-2xl bg-slate-900/70 border border-sky-900/40 hover:border-sky-700/60 transition group">
+      <div id="chat-msg-${msg.id}" data-msg-id="${msg.id}" class="flex items-start space-x-3 p-3 sm:p-3.5 rounded-2xl bg-slate-900/70 border border-sky-900/40 hover:border-sky-700/60 transition group">
         <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden bg-slate-950 border border-sky-400/40 flex-shrink-0 shadow-md">
           <img src="${msg.userAvatar || 'logo.jpg'}" alt="${escapeHtml(msg.userName)}" class="w-full h-full object-cover">
         </div>
@@ -4079,6 +4600,21 @@ function renderChatInput() {
       </form>
     `;
   }
+
+  // Hook typing events to #chat-message-input
+  const msgInput = document.getElementById('chat-message-input');
+  if (msgInput) {
+    msgInput.addEventListener('input', () => {
+      if (msgInput.value.trim().length > 0) {
+        notifyTypingStart();
+      } else {
+        notifyTypingStop();
+      }
+    });
+    msgInput.addEventListener('blur', () => {
+      notifyTypingStop();
+    });
+  }
 }
 
 function insertChatPreset(phrase) {
@@ -4137,14 +4673,26 @@ function handleSendChatMessage(e) {
     createdAtMs: Date.now()
   };
 
+  notifyTypingStop();
   input.value = '';
   appChatMessages.push(newMsg);
   saveChatMessages();
-  renderChat();
+  appendSingleChatMessage(newMsg, true);
+  setChatLastReadTime(Date.now());
+  updateChatUnreadBadge();
 
-  const chatContainer = document.getElementById('chat-messages-container');
-  if (chatContainer) {
-    chatContainer.scrollTop = chatContainer.scrollHeight;
+  if (patpRealtimeBus) {
+    patpRealtimeBus.postMessage({ type: 'CHAT_NEW_MSG', message: newMsg });
+  }
+
+  const baseUrl = getFirebaseUrl();
+  if (baseUrl) {
+    const endpoint = baseUrl.endsWith('.json') ? baseUrl : `${baseUrl}/patp_db/chat.json`;
+    fetch(endpoint, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(appChatMessages)
+    }).catch(err => console.error(err));
   }
 
   showToast('Сообщение передано в эфир предприятия!', 'success');
@@ -4176,8 +4724,22 @@ function deleteChatMessage(msgId) {
     const delChat = getDeletedIds('chat');
     appChatMessages = appChatMessages.filter(m => m.id !== msgId && !delChat.includes(m.id));
     saveChatMessages();
-    renderChat();
+
+    // Instant DOM removal with smooth fade-out
+    const el = document.getElementById('chat-msg-' + msgId);
+    if (el) {
+      el.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+      el.style.opacity = '0';
+      el.style.transform = 'scale(0.95)';
+      setTimeout(() => el.remove(), 200);
+    }
+    updateChatUnreadBadge();
     showToast('Сообщение удалено навсегда из радиоканала.', 'info');
+
+    // Broadcast across tabs
+    if (patpRealtimeBus) {
+      patpRealtimeBus.postMessage({ type: 'CHAT_MSG_DELETED', msgId });
+    }
 
     // 3. Immediately push clean chat and deleted IDs to Firebase
     const baseUrl = getFirebaseUrl();
@@ -4229,7 +4791,13 @@ async function clearChatConfirm() {
     appChatMessages = [systemNotice];
     saveChatMessages();
     renderChat();
+    setChatLastReadTime(clearTimestamp);
+    updateChatUnreadBadge();
     showToast('История чата очищена на всех устройствах!', 'warning');
+
+    if (patpRealtimeBus) {
+      patpRealtimeBus.postMessage({ type: 'CHAT_CLEARED', clearedAt: clearTimestamp });
+    }
 
     // Immediately broadcast clearTimestamp and cleared chat to Firebase
     const baseUrl = getFirebaseUrl();
@@ -4345,6 +4913,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   updateCloudStatusUI();
   startCloudSyncLoop();
   initPresenceEngine();
+  initRealtimeStreaming();
+  updateChatUnreadBadge();
+
+  // Window focus listener to mark chat read when active
+  window.addEventListener('focus', () => {
+    if (currentTab === 'chat') {
+      setChatLastReadTime(Date.now());
+      updateChatUnreadBadge();
+    }
+  });
+
+  // Regular typing indicator maintenance
+  setInterval(renderTypingIndicator, 1500);
 
   // Instant cloud fetch on startup for all devices
   if (getFirebaseUrl()) {
