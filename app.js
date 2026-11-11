@@ -1184,6 +1184,32 @@ function applyCloudData(data) {
   const deletedFleet = getDeletedIds('fleet');
   const deletedRoutes = getDeletedIds('routes');
 
+  // Purge any locally cached deleted items immediately across all entities
+  if (deletedChat.length > 0) {
+    const prevChatCount = appChatMessages.length;
+    appChatMessages = appChatMessages.filter(m => !deletedChat.includes(m.id));
+    if (appChatMessages.length !== prevChatCount) {
+      saveChatMessages();
+      hasChatChanged = true;
+    }
+  }
+  if (deletedReports.length > 0) {
+    const prevRepCount = appReports.length;
+    appReports = appReports.filter(r => !deletedReports.includes(r.id));
+    if (appReports.length !== prevRepCount) {
+      saveReports();
+      hasReportsChanged = true;
+    }
+  }
+  if (deletedLeaves.length > 0) {
+    const prevLeavesCount = appLeaves.length;
+    appLeaves = appLeaves.filter(l => !deletedLeaves.includes(l.id));
+    if (appLeaves.length !== prevLeavesCount) {
+      saveLeaves();
+      hasLeavesChanged = true;
+    }
+  }
+
   // 1. Merge Users
   if (Array.isArray(data.users) && data.users.length > 0) {
     const prevCount = appUsers.length;
@@ -4142,11 +4168,39 @@ function deleteChatMessage(msgId) {
     return;
   }
 
-  if (confirm(`Удалить сообщение от «${msg.userName}»?`)) {
-    appChatMessages = appChatMessages.filter(m => m.id !== msgId);
+  if (confirm(`Удалить сообщение от «${msg.userName}» навсегда?`)) {
+    // 1. Record ID permanently in deletedChat tombstones
+    addDeletedId('chat', msgId);
+
+    // 2. Remove from local array
+    const delChat = getDeletedIds('chat');
+    appChatMessages = appChatMessages.filter(m => m.id !== msgId && !delChat.includes(m.id));
     saveChatMessages();
     renderChat();
-    showToast('Сообщение удалено из эфира.', 'info');
+    showToast('Сообщение удалено навсегда из радиоканала.', 'info');
+
+    // 3. Immediately push clean chat and deleted IDs to Firebase
+    const baseUrl = getFirebaseUrl();
+    if (baseUrl) {
+      const endpoint = baseUrl.endsWith('.json') ? baseUrl : `${baseUrl}/patp_db`;
+      try {
+        fetch(`${endpoint}/chat.json`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(appChatMessages)
+        }).catch(err => console.error('Error removing chat message from cloud:', err));
+
+        fetch(`${endpoint}/deleted_ids/chat.json`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(delChat)
+        }).catch(err => console.error('Error syncing deleted chat IDs:', err));
+      } catch (e) {
+        console.error('Direct cloud chat deletion error:', e);
+      }
+    }
+
+    // 4. Trigger full sync
     syncToCloud();
   }
 }
