@@ -113,7 +113,7 @@
         </span>
         <div class="relative overflow-hidden flex-1 min-w-0 h-6 flex items-center ticker-marquee-container" title="Наведите курсор, чтобы приостановить бегущую строку">
           <div class="ticker-marquee-track flex items-center space-x-12">
-            <span class="ticker-text-content text-slate-200 font-medium whitespace-nowrap">Уважаемые водители! На 104-м пригородном маршруте в районе с. Коренёво открыт отремонтированный объезд. Все путевые листы и отчёты о сменах сдавать строго через раздел «Отчеты».</span>
+            <span id="ticker-text" class="ticker-text-content text-slate-200 font-medium whitespace-nowrap">Уважаемые водители! На 104-м пригородном маршруте в районе с. Коренёво открыт отремонтированный объезд. Все путевые листы и отчёты о сменах сдавать строго через раздел «Отчеты».</span>
             <span class="text-sky-400 font-bold opacity-60">•</span>
             <span class="ticker-text-content text-slate-200 font-medium whitespace-nowrap">Уважаемые водители! На 104-м пригородном маршруте в районе с. Коренёво открыт отремонтированный объезд. Все путевые листы и отчёты о сменах сдавать строго через раздел «Отчеты».</span>
           </div>
@@ -633,7 +633,8 @@
 
           <div>
             <label class="block text-xs font-medium text-slate-300 mb-1">Модель и Гос/Бортовой номер автобуса *</label>
-            <input type="text" id="rep-bus-info" required class="w-full patp-input px-3.5 py-2.5 rounded-xl text-sm" placeholder="ЛиАЗ-5256.26 (Борт №104, а145кх)">
+            <input type="text" id="rep-bus-info" list="fleet-bus-datalist" required class="w-full patp-input px-3.5 py-2.5 rounded-xl text-sm" placeholder="ЛиАЗ-5256.26 (Борт №104, а145кх)">
+            <datalist id="fleet-bus-datalist"></datalist>
           </div>
         </div>
 

@@ -498,6 +498,9 @@ function setChatLastReadTime(timestamp = Date.now()) {
 }
 
 function calculateChatUnreadCount() {
+  if (typeof currentTab !== 'undefined' && currentTab === 'chat') {
+    return 0;
+  }
   const lastRead = getChatLastReadTime();
   const clearedAt = Number(localStorage.getItem('korenevo_chat_cleared_at')) || 0;
   const effectiveThreshold = Math.max(lastRead, clearedAt);
@@ -568,7 +571,7 @@ function notifyTypingStart() {
     }
   }
 
-  if (typingDebounceTimer) clearTimeout(typingDebounceTimer);
+  if (typeof clearTimeout !== 'undefined' && typingDebounceTimer) clearTimeout(typingDebounceTimer);
   typingDebounceTimer = setTimeout(() => {
     notifyTypingStop();
   }, 2800);
@@ -577,7 +580,7 @@ function notifyTypingStart() {
 function notifyTypingStop() {
   if (isCurrentlyTyping) {
     isCurrentlyTyping = false;
-    if (typingDebounceTimer) clearTimeout(typingDebounceTimer);
+    if (typeof clearTimeout !== 'undefined' && typingDebounceTimer) clearTimeout(typingDebounceTimer);
 
     const baseUrl = getFirebaseUrl();
     if (baseUrl) {
