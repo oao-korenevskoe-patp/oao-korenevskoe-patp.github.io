@@ -717,6 +717,114 @@ body {
   box-shadow: 0 8px 16px rgba(25, 119, 243, 0.3) !important;
 }
 
+/* Header utility buttons in light mode */
+[data-theme="light"] #header-notif-btn {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+[data-theme="light"] #header-notif-btn:hover {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+[data-theme="light"] #header-notif-btn .fa-bell {
+  color: #0284c7 !important;
+}
+
+[data-theme="light"] #auth-nav-container button,
+[data-theme="light"] #auth-nav-container .bg-slate-900\/90 {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f2347 !important;
+}
+[data-theme="light"] #auth-nav-container button:hover,
+[data-theme="light"] #auth-nav-container .bg-slate-800\/90 {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+[data-theme="light"] #auth-nav-container .text-slate-100 {
+  color: #0f2347 !important;
+}
+[data-theme="light"] #auth-nav-container .text-slate-400 {
+  color: #64748b !important;
+}
+[data-theme="light"] #auth-nav-container .bg-slate-950 {
+  background-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Sub-bar text in light mode */
+[data-theme="light"] .enterprise-sub-bar {
+  border-color: #e2e8f0 !important;
+  color: #475569 !important;
+  background-color: rgba(248, 250, 252, 0.95) !important;
+}
+[data-theme="light"] .enterprise-sub-bar span.text-slate-400 {
+  color: #64748b !important;
+}
+[data-theme="light"] #cloud-sync-status-badge {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
+}
+[data-theme="light"] #online-counter-btn {
+  background-color: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+  color: #065f46 !important;
+}
+[data-theme="light"] #online-counter-btn #online-count-num {
+  color: #047857 !important;
+}
+
+/* Role Badges in Light Mode (High Contrast WCAG AAA) */
+[data-theme="light"] .badge-role-director {
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+  border-color: #fca5a5 !important;
+  font-weight: 700 !important;
+}
+[data-theme="light"] .badge-role-hr {
+  background: #f3e8ff !important;
+  color: #6b21a8 !important;
+  border-color: #d8b4fe !important;
+  font-weight: 700 !important;
+}
+[data-theme="light"] .badge-role-dispatch {
+  background: #e0f2fe !important;
+  color: #0369a1 !important;
+  border-color: #7dd3fc !important;
+  font-weight: 700 !important;
+}
+[data-theme="light"] .badge-role-driver {
+  background: #d1fae5 !important;
+  color: #047857 !important;
+  border-color: #6ee7b7 !important;
+  font-weight: 700 !important;
+}
+
+/* All Cards in light mode */
+[data-theme="light"] .patp-card {
+  background-color: var(--card-bg) !important;
+  background-image: none !important;
+  border-color: var(--card-border) !important;
+  box-shadow: 0 4px 16px var(--card-shadow) !important;
+  color: var(--text-main) !important;
+}
+
+/* Top Section Banners in Light Mode (Override hardcoded dark gradients) */
+[data-theme="light"] .patp-card[class*="bg-gradient-to-br"],
+[data-theme="light"] .patp-card[class*="bg-gradient-to-r"],
+[data-theme="light"] #section-chat > .patp-card:first-child,
+[data-theme="light"] #section-reports > .patp-card:first-child,
+[data-theme="light"] #section-leaves > .patp-card:first-child,
+[data-theme="light"] #section-routes > .patp-card:first-child,
+[data-theme="light"] #section-announcements > .patp-card:first-child {
+  background: linear-gradient(135deg, #ffffff 0%, #f0f7ff 100%) !important;
+  background-image: linear-gradient(135deg, #ffffff 0%, #f0f7ff 100%) !important;
+  border-color: rgba(37, 99, 235, 0.2) !important;
+  box-shadow: 0 4px 16px rgba(15, 35, 71, 0.06) !important;
+}
+
 /* Card titles and headings in light mode */
 [data-theme="light"] .patp-card h1,
 [data-theme="light"] .patp-card h2,
@@ -726,27 +834,168 @@ body {
   color: #0f2347 !important;
 }
 
+[data-theme="light"] .patp-card p,
 [data-theme="light"] .patp-card p.text-slate-300,
 [data-theme="light"] .patp-card span.text-slate-300 {
-  color: #475569 !important;
+  color: #334155 !important;
 }
 
 [data-theme="light"] .patp-card .text-slate-400 {
   color: #64748b !important;
 }
 
-/* Explicitly preserve crisp white text on colored buttons, badges, and active pills */
-[data-theme="light"] .hero-cta-btn,
-[data-theme="light"] .nav-pill-btn.active,
-[data-theme="light"] button.text-white,
-[data-theme="light"] .btn-primary,
-[data-theme="light"] [class*="bg-gradient-to-r"],
-[data-theme="light"] .bg-blue-600,
-[data-theme="light"] .bg-sky-600,
-[data-theme="light"] .bg-purple-600,
-[data-theme="light"] .bg-emerald-600,
-[data-theme="light"] .bg-rose-600 {
-  color: #ffffff !important;
+/* Drivers, numbers and text inside cards */
+[data-theme="light"] .patp-card span.text-white,
+[data-theme="light"] .patp-card div.text-white,
+[data-theme="light"] .patp-card .font-bold.text-white {
+  color: #0f2347 !important;
+}
+
+[data-theme="light"] .patp-card .font-mono {
+  color: #0f2347 !important;
+}
+
+/* Grid & sub-blocks inside reports, leaves, and overview cards */
+[data-theme="light"] .patp-card .bg-slate-900\/70,
+[data-theme="light"] .patp-card .bg-slate-900\/60,
+[data-theme="light"] .patp-card .bg-slate-900\/50,
+[data-theme="light"] .patp-card .bg-slate-900\/40,
+[data-theme="light"] .patp-card .bg-slate-900,
+[data-theme="light"] .patp-card .bg-slate-950\/60,
+[data-theme="light"] .patp-card .bg-slate-950\/40,
+[data-theme="light"] .patp-card .bg-sky-950\/40 {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+[data-theme="light"] .patp-card .border-sky-900\/50,
+[data-theme="light"] .patp-card .border-sky-900\/40,
+[data-theme="light"] .patp-card .border-sky-950,
+[data-theme="light"] .patp-card .border-purple-950 {
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme="light"] .patp-card .text-slate-200 {
+  color: #1e293b !important;
+}
+[data-theme="light"] .patp-card strong.text-slate-200 {
+  color: #0f2347 !important;
+}
+[data-theme="light"] .patp-card .text-sky-300 {
+  color: #0369a1 !important;
+}
+[data-theme="light"] .patp-card .text-sky-200 {
+  color: #0284c7 !important;
+}
+[data-theme="light"] .patp-card .text-purple-300 {
+  color: #7e22ce !important;
+}
+
+/* Chat Tab Specific Overrides */
+[data-theme="light"] #section-chat .patp-card:first-child button.bg-slate-900\/90 {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+[data-theme="light"] #section-chat .patp-card:first-child button.bg-slate-900\/90 #chat-online-count {
+  color: #0f2347 !important;
+}
+
+[data-theme="light"] #section-chat .bg-slate-950\/80 {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+[data-theme="light"] #section-chat .bg-slate-900\/95,
+[data-theme="light"] #section-chat .bg-slate-900\/90 {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme="light"] #section-chat .bg-slate-900\/95 .text-white {
+  color: #0f2347 !important;
+}
+[data-theme="light"] #section-chat .bg-slate-900\/95 .text-slate-400 {
+  color: #64748b !important;
+}
+
+[data-theme="light"] #chat-messages-container {
+  background-color: #f1f5f9 !important;
+}
+
+/* Chat Message Items */
+[data-theme="light"] div[id^="chat-msg-"] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
+}
+[data-theme="light"] div[id^="chat-msg-"]:hover {
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+}
+[data-theme="light"] div[id^="chat-msg-"] .text-white {
+  color: #0f2347 !important;
+}
+[data-theme="light"] div[id^="chat-msg-"] .text-slate-200 {
+  color: #0f172a !important;
+}
+[data-theme="light"] div[id^="chat-msg-"] .text-slate-400 {
+  color: #64748b !important;
+}
+[data-theme="light"] div[id^="chat-msg-"] .bg-slate-950 {
+  background-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Chat Input Footer */
+[data-theme="light"] #chat-input-container {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+[data-theme="light"] #chat-input-container .bg-slate-800\/80 {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0369a1 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+[data-theme="light"] #chat-input-container .bg-slate-800\/80:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #0284c7 !important;
+}
+[data-theme="light"] #chat-message-input,
+[data-theme="light"] #chat-guest-name {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+[data-theme="light"] #chat-message-input:focus,
+[data-theme="light"] #chat-guest-name:focus {
+  border-color: #059669 !important;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15) !important;
+}
+[data-theme="light"] #chat-typing-indicator {
+  background-color: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+  color: #0284c7 !important;
+}
+
+/* Route Cards in Light Mode */
+[data-theme="light"] #routes-grid-container .patp-card h3 {
+  color: #0f2347 !important;
+}
+[data-theme="light"] #routes-grid-container .text-slate-200 {
+  color: #0f2347 !important;
+  font-weight: 700 !important;
+}
+
+/* Announcements in Light Mode */
+[data-theme="light"] #section-announcements .patp-card h3 {
+  color: #0f2347 !important;
+}
+[data-theme="light"] #section-announcements .text-slate-300 {
+  color: #334155 !important;
 }
 
 /* Form inputs & labels in light mode */
@@ -755,79 +1004,21 @@ body {
   border-color: #cbd5e1 !important;
   color: #0f172a !important;
 }
-
 [data-theme="light"] .patp-input:focus {
   border-color: #2563eb !important;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
 }
-
 [data-theme="light"] .patp-input::placeholder {
   color: #94a3b8 !important;
 }
-
 [data-theme="light"] label,
 [data-theme="light"] .patp-card label {
   color: #334155 !important;
   font-weight: 600 !important;
 }
-
 [data-theme="light"] select.patp-input option {
   background-color: #ffffff;
   color: #0f172a;
-}
-
-/* Secondary filter buttons in light mode */
-[data-theme="light"] .patp-card button.bg-slate-800 {
-  background-color: #f1f5f9 !important;
-  color: #334155 !important;
-  border: 1px solid #cbd5e1 !important;
-}
-
-[data-theme="light"] .patp-card button.bg-slate-800:hover {
-  background-color: #e2e8f0 !important;
-  color: #0f172a !important;
-}
-
-/* Chat container in light mode */
-[data-theme="light"] #section-chat .patp-card {
-  background-color: var(--chat-box-bg) !important;
-}
-
-[data-theme="light"] #section-chat .bg-slate-900\/95,
-[data-theme="light"] #section-chat .bg-slate-900\/90 {
-  background-color: var(--chat-header-bg) !important;
-  border-color: #e2e8f0 !important;
-}
-
-[data-theme="light"] #section-chat .text-slate-300 {
-  color: #334155 !important;
-}
-
-[data-theme="light"] #section-chat .text-slate-400 {
-  color: #64748b !important;
-}
-
-[data-theme="light"] #chat-messages-container {
-  background-color: #f1f5f9;
-}
-
-[data-theme="light"] .chat-msg-received {
-  background-color: var(--chat-bubble-received) !important;
-  color: var(--chat-text-received) !important;
-  border: 1px solid #e2e8f0 !important;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04) !important;
-}
-
-[data-theme="light"] .chat-msg-sent {
-  background-color: var(--chat-bubble-sent) !important;
-  color: var(--chat-text-sent) !important;
-  box-shadow: 0 4px 8px rgba(25, 119, 243, 0.25) !important;
-}
-
-[data-theme="light"] #chat-typing-indicator {
-  background-color: #f1f5f9 !important;
-  color: #2563eb !important;
-  border-color: #e2e8f0 !important;
 }
 
 /* Modals in light mode */
@@ -841,8 +1032,8 @@ body {
 [data-theme="light"] #modal-online-users .patp-card,
 [data-theme="light"] #modal-notifications .patp-card,
 [data-theme="light"] #modal-depot-about .patp-card {
-  background-color: var(--modal-bg) !important;
-  border-color: var(--modal-border) !important;
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
   color: var(--text-main) !important;
 }
 
@@ -851,23 +1042,75 @@ body {
   color: #0f2347 !important;
 }
 
-/* Sub-bar text in light mode */
-[data-theme="light"] .enterprise-sub-bar {
-  border-color: #e2e8f0 !important;
+/* Admin Panel Tables & Forms in Light Mode */
+[data-theme="light"] .patp-card table thead,
+[data-theme="light"] .patp-card .bg-slate-950 {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
   color: #475569 !important;
-  background-color: rgba(248, 250, 252, 0.8) !important;
 }
-
-[data-theme="light"] .enterprise-sub-bar span.text-slate-400 {
-  color: #64748b !important;
+[data-theme="light"] .patp-card table thead th {
+  color: #475569 !important;
 }
-
-[data-theme="light"] .bg-slate-900\/60,
-[data-theme="light"] .bg-slate-900\/40,
-[data-theme="light"] .bg-slate-900 {
-  background-color: #f8fafc !important;
-  border-color: #dbeafe !important;
+[data-theme="light"] .patp-card table tbody tr {
+  border-color: #e2e8f0 !important;
   color: #1e293b !important;
+}
+[data-theme="light"] .patp-card table tbody td {
+  color: #1e293b !important;
+}
+[data-theme="light"] .patp-card table tbody td.text-white,
+[data-theme="light"] .patp-card table tbody td span.text-white {
+  color: #0f2347 !important;
+}
+
+[data-theme="light"] #admin-add-user-form,
+[data-theme="light"] #admin-add-bus-form,
+[data-theme="light"] #admin-add-route-form {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+}
+
+/* Online users modal in Light Mode */
+[data-theme="light"] #modal-online-users .bg-slate-900\/80 {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+[data-theme="light"] #modal-online-users .text-white {
+  color: #0f2347 !important;
+}
+
+/* Notifications modal in Light Mode */
+[data-theme="light"] #modal-notifications div.p-3\.5 {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+[data-theme="light"] #modal-notifications .text-slate-200 {
+  color: #0f2347 !important;
+}
+[data-theme="light"] #modal-notifications .text-slate-300 {
+  color: #334155 !important;
+}
+
+/* Explicitly preserve crisp white text on colored buttons, action pills and primary actions */
+[data-theme="light"] .hero-cta-btn,
+[data-theme="light"] .hero-cta-btn *,
+[data-theme="light"] .nav-pill-btn.active,
+[data-theme="light"] .nav-pill-btn.active *,
+[data-theme="light"] .btn-primary,
+[data-theme="light"] .btn-primary *,
+[data-theme="light"] button.bg-blue-600,
+[data-theme="light"] button.bg-blue-600 *,
+[data-theme="light"] button.bg-emerald-600,
+[data-theme="light"] button.bg-emerald-600 *,
+[data-theme="light"] button.bg-rose-600,
+[data-theme="light"] button.bg-rose-600 *,
+[data-theme="light"] button[type="submit"],
+[data-theme="light"] button[type="submit"] *,
+[data-theme="light"] button[class*="bg-gradient-to-r"],
+[data-theme="light"] button[class*="bg-gradient-to-r"] * {
+  color: #ffffff !important;
 }
 
 /* Ticker Marquee in light mode */
@@ -876,27 +1119,22 @@ body {
   border-bottom: 1px solid #bfdbfe !important;
   color: #0f2347 !important;
 }
-
 [data-theme="light"] .ticker-bar-wrap .ticker-text-content {
   color: #0f2347 !important;
   font-weight: 600;
 }
-
 [data-theme="light"] .ticker-bar-wrap span.bg-sky-500\/20 {
   background-color: #1977f3 !important;
   color: #ffffff !important;
   border-color: #1977f3 !important;
   box-shadow: 0 2px 6px rgba(25, 119, 243, 0.25) !important;
 }
-
 [data-theme="light"] .ticker-bar-wrap span.bg-sky-500\/20 i {
   color: #fbbf24 !important;
 }
-
 [data-theme="light"] .ticker-bar-wrap .text-slate-400 {
   color: #475569 !important;
 }
-
 [data-theme="light"] .ticker-bar-wrap .bg-slate-950\/40 {
   background-color: rgba(255, 255, 255, 0.7) !important;
   border-color: #bfdbfe !important;
