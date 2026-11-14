@@ -264,12 +264,37 @@ body {
   right: 18px;
   height: 60px;
   pointer-events: none;
-  opacity: 0.85;
+  opacity: 0.45;
   z-index: 0;
   display: none;
 }
+@media (min-width: 1024px) {
+  .header-kremlin-skyline {
+    opacity: 0.85;
+  }
+}
 [data-theme="dark"] .header-kremlin-skyline {
   display: block;
+}
+
+/* Depot Clock Pill Badges */
+.depot-clock-pill {
+  background-color: rgba(13, 29, 54, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  color: #94a3b8;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  transition: all 0.2s ease;
+}
+.depot-clock-pill:hover {
+  border-color: rgba(56, 189, 248, 0.5);
+}
+.depot-clock-mobile-pill {
+  background-color: rgba(13, 29, 54, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+}
+[data-theme="dark"] .depot-clock-pill #depot-clock,
+[data-theme="dark"] .depot-clock-mobile-pill #depot-clock-mobile {
+  color: #38bdf8;
 }
 
 /* Light Theme Hero Skyline Strip */
@@ -654,6 +679,36 @@ body {
   color: var(--text-title) !important;
   background: none !important;
   -webkit-text-fill-color: var(--text-title) !important;
+}
+
+[data-theme="light"] .header-brand-subtitle {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .header-live-status {
+  color: #0284c7 !important;
+}
+
+[data-theme="light"] .depot-clock-pill {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+[data-theme="light"] .depot-clock-pill:hover {
+  border-color: #94a3b8 !important;
+}
+[data-theme="light"] .depot-clock-pill #depot-clock,
+[data-theme="light"] .depot-clock-mobile-pill #depot-clock-mobile {
+  color: #0284c7 !important;
+}
+[data-theme="light"] .depot-clock-pill .fa-clock {
+  color: #0284c7 !important;
+}
+[data-theme="light"] .depot-clock-mobile-pill {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
 }
 
 [data-theme="light"] .brand-bus-icon {
