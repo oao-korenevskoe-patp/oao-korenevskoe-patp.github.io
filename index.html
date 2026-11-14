@@ -12,21 +12,39 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <!-- Custom Styles -->
   <link rel="stylesheet" href="style.css">
+  <!-- Instant Theme Initializer (prevents flicker) -->
+  <script>
+    (function() {
+      try {
+        var t = localStorage.getItem('korenevo_theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
 </head>
-<body class="text-slate-100 flex flex-col min-h-screen">
+<body class="flex flex-col min-h-screen relative">
+  <!-- Corner Tech Stripes for Dark Theme (Screenshot 2) -->
+  <div class="tech-stripes-tl"></div>
+  <div class="tech-stripes-br"></div>
 
   <!-- TOP HEADER / BRANDING -->
-  <header class="border-b border-sky-900/50 bg-[#091124]/90 backdrop-blur sticky top-0 z-40 shadow-xl">
-    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+  <header class="border-b border-sky-900/50 bg-[#091124]/90 backdrop-blur sticky top-0 z-40 shadow-xl relative overflow-hidden theme-header">
+    <!-- Kremlin / Towers Skyline Silhouette in Dark Mode (from Screenshot 2) -->
+    <img src="skyline-kremlin-transparent.png" alt="" class="header-kremlin-skyline">
+
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 relative z-10">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-2.5 sm:py-3">
         
         <!-- Top row on mobile / Left column on desktop: Logo & Title -->
         <div class="flex items-center justify-between sm:justify-start space-x-3 min-w-0">
           <div class="flex items-center space-x-2.5 sm:space-x-3.5 min-w-0">
             <div class="flex flex-col items-center flex-shrink-0">
-              <div class="relative w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl overflow-hidden shadow-lg shadow-sky-500/25 border-2 border-sky-400/50 bg-slate-900 group">
-                <img src="logo.jpg" alt="ОАО Коренёвский ПАТП" class="w-full h-full object-cover">
-                <div class="absolute inset-0 ring-1 ring-inset ring-white/20 rounded-xl sm:rounded-2xl"></div>
+              <!-- Stylized Municipal Bus Brand Squircle (Matching Screenshot 1 & 2) -->
+              <div class="brand-bus-icon relative w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center bg-blue-600 text-white shadow-lg shadow-blue-500/30 overflow-hidden group">
+                <svg class="w-7 h-7 sm:w-8 sm:h-8 fill-current" viewBox="0 0 24 24">
+                  <path d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
+                </svg>
+                <div class="absolute inset-0 ring-1 ring-inset ring-white/20 rounded-2xl"></div>
               </div>
               <!-- СЧЕТЧИК ОНЛАЙНА СВЕРХУ СЛЕВА ПОД АВАТАРКОЙ -->
               <button onclick="openOnlineModal()" id="online-counter-btn" class="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-950/90 border border-emerald-500/50 text-[9px] sm:text-[10px] font-bold text-emerald-300 shadow-md hover:bg-emerald-900 hover:border-emerald-400 transition cursor-pointer" title="Нажмите, чтобы увидеть, кто сейчас в сети">
@@ -42,7 +60,7 @@
                   На связи
                 </span>
               </div>
-              <h1 class="text-base sm:text-2xl md:text-3xl font-black tracking-tight bg-gradient-to-r from-white via-sky-100 to-sky-300 bg-clip-text text-transparent leading-tight mt-0.5 truncate">
+              <h1 class="header-brand-title text-base sm:text-2xl md:text-3xl font-black tracking-tight leading-tight mt-0.5 truncate text-white">
                 ОАО «Коренёвский ПАТП»
               </h1>
               <div class="text-[10px] sm:text-[11px] text-sky-300/80 font-medium tracking-wide hidden sm:block">
@@ -58,13 +76,19 @@
           </div>
         </div>
 
-        <!-- Right Side / Second row on mobile: User Account Panel or Login Buttons -->
+        <!-- Right Side / Second row on mobile: Controls & Auth -->
         <div class="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
           <!-- Digital Clock for desktop -->
           <div class="hidden sm:flex flex-col text-right pr-3 border-r border-sky-900/60 font-mono text-xs">
             <span class="text-slate-400">Время депо (МСК):</span>
             <span id="depot-clock" class="text-sky-300 font-bold text-sm tracking-widest">12:00:00</span>
           </div>
+
+          <!-- THEME TOGGLE BUTTON (СВЕТЛАЯ / ТЁМНАЯ ТЕМА) -->
+          <button type="button" onclick="toggleTheme()" id="theme-toggle-btn" class="theme-toggle-btn px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl flex items-center gap-1.5 text-xs font-semibold cursor-pointer shadow-sm flex-shrink-0" title="Переключить тему оформления (Светлая / Тёмная)">
+            <i id="theme-toggle-icon" class="fa-solid fa-sun text-amber-400 text-sm"></i>
+            <span id="theme-toggle-text" class="hidden sm:inline">Светлая тема</span>
+          </button>
 
           <!-- Notification Bell Button -->
           <button type="button" onclick="openNotificationsModal()" id="header-notif-btn" class="relative p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-sky-900/60 hover:border-sky-500/50 transition cursor-pointer flex-shrink-0" title="Уведомления">
@@ -81,7 +105,7 @@
       </div>
 
       <!-- Enterprise Sub-bar -->
-      <div class="py-2 border-t border-sky-950/80 flex flex-wrap items-center justify-between text-xs text-slate-300 gap-2">
+      <div class="enterprise-sub-bar py-2 border-t border-sky-950/80 flex flex-wrap items-center justify-between text-xs text-slate-300 gap-2">
         <div class="flex items-center gap-2">
           <span class="text-slate-400 font-medium flex items-center gap-1">
             <i class="fa-solid fa-id-badge text-sky-400"></i> Текущий статус:
@@ -104,7 +128,7 @@
   </header>
 
   <!-- DISPATCH ANNOUNCEMENT TICKER (RUNNING MARQUEE) -->
-  <div class="bg-gradient-to-r from-blue-950/90 via-slate-900 to-blue-950/90 border-b border-sky-800/40 py-2 px-3 sm:px-6 text-xs text-slate-300 relative z-10 shadow-sm">
+  <div class="ticker-bar-wrap py-2 px-3 sm:px-6 text-xs relative z-10 shadow-sm">
     <div class="max-w-7xl mx-auto flex items-center justify-between gap-3 sm:gap-6">
       <div class="flex items-center gap-2 overflow-hidden flex-1 min-w-0">
         <span class="px-2.5 py-1 bg-sky-500/20 text-sky-300 rounded-lg font-bold border border-sky-500/40 shrink-0 flex items-center gap-1.5 shadow-sm">
@@ -129,31 +153,184 @@
   <!-- MAIN WRAPPER -->
   <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
-    <!-- FORUM NAVIGATION TABS (Отчеты, Отгул, Наши маршруты, Общий чат) -->
-    <div class="flex border-b border-sky-900/60 space-x-1 sm:space-x-2 mb-6 bg-slate-900/40 p-1.5 rounded-xl border border-sky-900/40 overflow-x-auto">
-      <button id="tab-btn-reports" onclick="switchTab('reports')" class="flex-1 py-3 px-2 sm:px-4 rounded-lg font-semibold text-xs sm:text-base flex items-center justify-center gap-1.5 sm:gap-2 transition duration-200 bg-sky-600/30 text-sky-200 border border-sky-500/30 shadow-inner whitespace-nowrap">
-        <i class="fa-solid fa-clipboard-check text-sky-400"></i>
-        <span>Отчеты</span>
+    <!-- FORUM NAVIGATION TABS (Главная, Отчёты водителей, Заявки на отгулы, Наши маршруты, Объявления, Общий чат, Личный кабинет) -->
+    <nav class="nav-pill-track flex items-center space-x-1 sm:space-x-2 mb-6 p-1.5 rounded-2xl overflow-x-auto shadow-md">
+      <button id="tab-btn-home" onclick="switchTab('home')" class="nav-pill-btn active flex-1">
+        <i class="fa-solid fa-house"></i>
+        <span>Главная</span>
+      </button>
+
+      <button id="tab-btn-reports" onclick="switchTab('reports')" class="nav-pill-btn flex-1">
+        <i class="fa-solid fa-clipboard-check"></i>
+        <span>Отчёты водителей</span>
         <span id="badge-pending-reports-count" class="hidden ml-1 px-1.5 py-0.2 rounded-full text-xs bg-amber-500/30 text-amber-300 border border-amber-500/40">0</span>
       </button>
 
-      <button id="tab-btn-leaves" onclick="switchTab('leaves')" class="flex-1 py-3 px-2 sm:px-4 rounded-lg font-semibold text-xs sm:text-base flex items-center justify-center gap-1.5 sm:gap-2 transition duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 whitespace-nowrap">
-        <i class="fa-solid fa-calendar-minus text-purple-400"></i>
-        <span>Отгул</span>
+      <button id="tab-btn-leaves" onclick="switchTab('leaves')" class="nav-pill-btn flex-1">
+        <i class="fa-solid fa-calendar-days"></i>
+        <span>Заявки на отгулы</span>
         <span id="badge-pending-leaves-count" class="hidden ml-1 px-1.5 py-0.2 rounded-full text-xs bg-purple-500/30 text-purple-300 border border-purple-500/40">0</span>
       </button>
 
-      <button id="tab-btn-routes" onclick="switchTab('routes')" class="flex-1 py-3 px-2 sm:px-4 rounded-lg font-semibold text-xs sm:text-base flex items-center justify-center gap-1.5 sm:gap-2 transition duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 whitespace-nowrap">
-        <i class="fa-solid fa-route text-amber-400"></i>
+      <button id="tab-btn-routes" onclick="switchTab('routes')" class="nav-pill-btn flex-1">
+        <i class="fa-solid fa-route"></i>
         <span>Наши маршруты</span>
       </button>
 
-      <button id="tab-btn-chat" onclick="switchTab('chat')" class="flex-1 py-3 px-2 sm:px-4 rounded-lg font-semibold text-xs sm:text-base flex items-center justify-center gap-1.5 sm:gap-2 transition duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 whitespace-nowrap">
-        <i class="fa-solid fa-comments text-emerald-400"></i>
+      <button id="tab-btn-announcements" onclick="switchTab('announcements')" class="nav-pill-btn flex-1">
+        <i class="fa-solid fa-bullhorn"></i>
+        <span>Объявления</span>
+      </button>
+
+      <button id="tab-btn-chat" onclick="switchTab('chat')" class="nav-pill-btn flex-1">
+        <i class="fa-solid fa-comments"></i>
         <span>Общий чат</span>
         <span id="badge-chat-count" class="hidden ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-rose-600 text-white font-bold font-mono border border-rose-500/40 shadow-sm animate-pulse">0</span>
       </button>
-    </div>
+
+      <button id="tab-btn-profile" onclick="handleProfileNavClick()" class="nav-pill-btn flex-1">
+        <i class="fa-solid fa-user"></i>
+        <span>Личный кабинет</span>
+      </button>
+    </nav>
+
+    <!-- TAB 0: ГЛАВНАЯ (HOME / HERO & 4 ACTION CARDS) -->
+    <section id="section-home" class="tab-content space-y-6">
+      
+      <!-- HERO BANNER SECTION (MATCHING SCREENSHOTS) -->
+      <div class="hero-banner-container p-6 sm:p-8 lg:p-10 relative">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center relative z-10">
+          
+          <!-- Left Column: Headline, Slogan, CTA Button -->
+          <div class="lg:col-span-6 space-y-4 text-center lg:text-left">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/25 text-xs font-semibold text-blue-500">
+              <i class="fa-solid fa-bus"></i>
+              <span>Официальный портал предприятия OMSI 2</span>
+            </div>
+            
+            <h2 class="hero-brand-title text-3xl sm:text-4xl lg:text-5xl font-black leading-tight">
+              ОАО «Коренёвский ПАТП»
+            </h2>
+            
+            <p id="hero-slogan" class="hero-slogan-text text-base sm:text-lg lg:text-xl font-medium max-w-xl">
+              Комфортные поездки по родному городу
+            </p>
+            
+            <div class="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-3">
+              <button onclick="openDepotAboutModal()" id="hero-cta-btn" class="hero-cta-btn px-6 py-3 rounded-full text-sm sm:text-base font-bold shadow-xl flex items-center gap-2.5 cursor-pointer">
+                <span>Узнать больше</span>
+                <i class="fa-solid fa-arrow-right"></i>
+              </button>
+              
+              <button onclick="switchTab('reports')" class="px-5 py-3 rounded-full border border-blue-500/30 font-semibold text-xs sm:text-sm hover:bg-blue-500/10 transition flex items-center gap-2 cursor-pointer">
+                <i class="fa-solid fa-plus-circle text-sky-400"></i>
+                <span>Сдать смену</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Right Column: Municipal Bus LiAZ Photo Card -->
+          <div class="lg:col-span-6 flex justify-center lg:justify-end">
+            <div class="hero-bus-img-card w-full max-w-md relative">
+              <img id="hero-bus-img" src="hero-bus-light.png" alt="Городской автобус ЛиАЗ ОАО Коренёвский ПАТП" class="w-full h-auto object-cover rounded-2xl">
+              <div class="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-sm text-[10px] sm:text-xs text-white font-mono flex items-center gap-1.5 border border-white/20">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 live-dot"></span>
+                <span>Маршрут №7 • ЛиАЗ-5292</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Light Theme Skyline Watermark Strip -->
+        <div class="hero-light-skyline"></div>
+      </div>
+
+      <!-- 4 QUICK ACCESS ACTION CARDS (DIRECTLY FROM SCREENSHOTS) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <!-- Action Card 1: Отчёты водителей -->
+        <div onclick="switchTab('reports')" class="patp-action-card group">
+          <div class="card-icon-wrap">
+            <i class="fa-solid fa-chart-column"></i>
+          </div>
+          <div class="card-title">Отчёты водителей</div>
+          <div class="card-desc">Сдача путевых листов и проверка смен</div>
+        </div>
+
+        <!-- Action Card 2: Заявки на отгулы -->
+        <div onclick="switchTab('leaves')" class="patp-action-card group">
+          <div class="card-icon-wrap">
+            <i class="fa-solid fa-calendar-days"></i>
+          </div>
+          <div class="card-title">Заявки на отгулы</div>
+          <div class="card-desc">Заявления на отпуск и отгул с линии</div>
+        </div>
+
+        <!-- Action Card 3: Наши маршруты -->
+        <div onclick="switchTab('routes')" class="patp-action-card group">
+          <div class="card-icon-wrap">
+            <i class="fa-solid fa-map-location-dot"></i>
+          </div>
+          <div class="card-title">Наши маршруты</div>
+          <div class="card-desc">Схемы движения городских и пригородных линий</div>
+        </div>
+
+        <!-- Action Card 4: Объявления -->
+        <div onclick="switchTab('announcements')" class="patp-action-card group">
+          <div class="card-icon-wrap">
+            <i class="fa-solid fa-bullhorn"></i>
+          </div>
+          <div class="card-title">Объявления</div>
+          <div class="card-desc">Оперативная сводка депо и приказы</div>
+        </div>
+
+      </div>
+
+      <!-- ENTERPRISE OPERATIONS & LIVE KPI OVERVIEW -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div class="patp-card rounded-2xl p-4 sm:p-5 flex items-center gap-3">
+          <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-500 text-lg sm:text-xl flex-shrink-0">
+            <i class="fa-solid fa-circle-check"></i>
+          </div>
+          <div class="min-w-0">
+            <div class="text-[10px] sm:text-xs text-slate-400 font-medium">Выпуск на линию</div>
+            <div class="text-base sm:text-xl font-bold font-mono">100% (Норма)</div>
+          </div>
+        </div>
+
+        <div class="patp-card rounded-2xl p-4 sm:p-5 flex items-center gap-3">
+          <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-500 text-lg sm:text-xl flex-shrink-0">
+            <i class="fa-solid fa-users"></i>
+          </div>
+          <div class="min-w-0">
+            <div class="text-[10px] sm:text-xs text-slate-400 font-medium">Водителей онлайн</div>
+            <div class="text-base sm:text-xl font-bold font-mono"><span id="home-online-drivers">1</span> чел.</div>
+          </div>
+        </div>
+
+        <div class="patp-card rounded-2xl p-4 sm:p-5 flex items-center gap-3">
+          <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-500 text-lg sm:text-xl flex-shrink-0">
+            <i class="fa-solid fa-file-signature"></i>
+          </div>
+          <div class="min-w-0">
+            <div class="text-[10px] sm:text-xs text-slate-400 font-medium">Сдано смен</div>
+            <div class="text-base sm:text-xl font-bold font-mono"><span id="home-total-reports">0</span></div>
+          </div>
+        </div>
+
+        <div class="patp-card rounded-2xl p-4 sm:p-5 flex items-center gap-3">
+          <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500 text-lg sm:text-xl flex-shrink-0">
+            <i class="fa-solid fa-sack-dollar"></i>
+          </div>
+          <div class="min-w-0">
+            <div class="text-[10px] sm:text-xs text-slate-400 font-medium">Касса предприятия</div>
+            <div class="text-base sm:text-xl font-bold font-mono text-emerald-500"><span id="home-total-revenue">0 ₽</span></div>
+          </div>
+        </div>
+      </div>
+
+    </section>
 
     <!-- TAB 1: ОТЧЕТЫ (REPORTS) -->
     <section id="section-reports" class="tab-content space-y-6">
@@ -267,6 +444,67 @@
       <!-- Routes Grid -->
       <div id="routes-grid-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <!-- Rendered via JS -->
+      </div>
+    </section>
+
+    <!-- TAB 5: ОБЪЯВЛЕНИЯ (ANNOUNCEMENTS) -->
+    <section id="section-announcements" class="tab-content hidden space-y-6">
+      <div class="patp-card rounded-2xl p-5 sm:p-6">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div class="flex items-center space-x-3">
+            <div class="w-12 h-12 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-500 text-2xl flex-shrink-0">
+              <i class="fa-solid fa-bullhorn animate-pulse"></i>
+            </div>
+            <div>
+              <h2 class="text-xl sm:text-2xl font-bold">Официальные объявления и сводка ПАТП</h2>
+              <p class="text-xs sm:text-sm text-slate-400 mt-0.5">Оперативные директивы руководства и диспетчерской службы</p>
+            </div>
+          </div>
+          <button onclick="openTickerEditPrompt()" id="btn-edit-announcement" class="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs transition flex items-center gap-2 cursor-pointer">
+            <i class="fa-solid fa-pen-to-square"></i>
+            <span>Редактировать сводку</span>
+          </button>
+        </div>
+
+        <!-- Active Directive Highlight Box -->
+        <div class="mt-6 p-4 sm:p-5 rounded-xl border border-sky-500/30 bg-sky-500/5">
+          <div class="flex items-center gap-2 text-xs font-bold text-sky-500 uppercase tracking-wider mb-2">
+            <i class="fa-solid fa-circle-exclamation text-amber-400"></i>
+            <span>Текущая оперативная директива</span>
+          </div>
+          <div id="announcement-live-text" class="text-sm sm:text-base font-medium leading-relaxed">
+            Уважаемые водители! На 104-м пригородном маршруте в районе с. Коренёво открыт отремонтированный объезд. Все путевые листы и отчёты о сменах сдавать строго через раздел «Отчеты».
+          </div>
+          <div class="mt-3 text-[11px] text-slate-400 flex items-center gap-4">
+            <span><i class="fa-solid fa-building-user text-sky-400 mr-1"></i>Диспетчерская ОАО «Коренёвский ПАТП»</span>
+            <span><i class="fa-solid fa-satellite-dish text-emerald-400 mr-1"></i>Транслируется во всех терминалах</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Enterprise Directives Archive -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="patp-card rounded-2xl p-5 space-y-2">
+          <div class="flex items-center justify-between text-xs text-slate-400">
+            <span class="font-bold text-sky-500">Приказ №104 • Служба подвижного состава</span>
+            <span>14 ноября 2026</span>
+          </div>
+          <h3 class="font-bold text-base">Сезонное техобслуживание отопителей салона ЛиАЗ и НефАЗ</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            В связи с похолоданием всем водителям перед выездом на первую смену проверить работу салонных калориферов и обогрева лобового стекла. При неисправности сообщать механику через рацию (канал 1).
+          </p>
+        </div>
+
+        <div class="patp-card rounded-2xl p-5 space-y-2">
+          <div class="flex items-center justify-between text-xs text-slate-400">
+            <span class="font-bold text-emerald-500">Приказ №103 • Бухгалтерия и касса</span>
+            <span>10 ноября 2026</span>
+          </div>
+          <h3 class="font-bold text-base">Правила сдачи выручки и путевых листов</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Выручка за проданные билеты в OMSI 2 сдается в конце каждой смены. Обязательно прикреплять скриншот окончания рейса с кассового аппарата или тахографа.
+          </p>
+        </div>
       </div>
     </section>
 
@@ -1316,4 +1554,54 @@
   <!-- Main JavaScript App -->
   <script src="app.js"></script>
 </body>
-</html>
+</html><!-- MODAL: DEPOT ABOUT / ENTERPRISE GUIDE -->
+  <div id="modal-depot-about" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="patp-card w-full max-w-2xl rounded-2xl p-6 border border-sky-500/40 shadow-2xl relative max-h-[90vh] overflow-y-auto animate-scale-up">
+      <button onclick="closeModal('modal-depot-about')" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg cursor-pointer">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 mb-4">
+        <div class="brand-bus-icon w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xl flex-shrink-0">
+          <i class="fa-solid fa-bus"></i>
+        </div>
+        <div>
+          <h3 class="text-xl font-bold">ОАО «Коренёвский ПАТП»</h3>
+          <p class="text-xs text-slate-400">Виртуальное автотранспортное предприятие в OMSI 2</p>
+        </div>
+      </div>
+      <div class="space-y-4 text-xs sm:text-sm text-slate-300 leading-relaxed">
+        <p>
+          ОАО «Коренёвский ПАТП» — современное пассажирское предприятие, обеспечивающее надёжные и комфортные автобусные перевозки по городским и пригородным направлениям в симуляторе OMSI 2.
+        </p>
+        <div class="p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/25 space-y-1">
+          <div class="font-bold text-blue-400">Наш девиз:</div>
+          <div>«Для тех, кто ценит качество и комфорт»</div>
+        </div>
+        <div>
+          <h4 class="font-bold text-white mb-1.5 text-sm">Подвижной состав автопарка:</h4>
+          <ul class="list-disc list-inside space-y-1 text-slate-400">
+            <li><b>ЛиАЗ-5292.22 / 5292.65</b> — низкопольные городские автобусы большой вместимости</li>
+            <li><b>ЛиАЗ-5256.26</b> — классические пригородные и городские машины</li>
+            <li><b>НефАЗ-5299-40-52</b> — полунизкопольные городские дизельные автобусы</li>
+            <li><b>ПАЗ-32053 / «Вектор Next»</b> — надёжные автобусы малой и средней вместимости</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold text-white mb-1.5 text-sm">Связь и диспетчеризация:</h4>
+          <p class="text-slate-400">
+            Связь с диспетчерской депо ведётся круглосуточно на частоте <b>144.200 МГц (Канал 1)</b> во встроенном общем чате сайта в режиме реального времени.
+          </p>
+        </div>
+      </div>
+      <div class="mt-6 pt-4 border-t border-sky-900/40 flex flex-wrap justify-end gap-3">
+        <button onclick="closeModal('modal-depot-about'); switchTab('routes');" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs cursor-pointer">
+          <i class="fa-solid fa-route mr-1.5"></i> Посмотреть маршруты
+        </button>
+        <button onclick="closeModal('modal-depot-about')" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs cursor-pointer">
+          Закрыть
+        </button>
+      </div>
+    </div>
+  </div>
+
+  

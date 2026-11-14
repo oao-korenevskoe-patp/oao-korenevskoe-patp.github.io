@@ -2148,32 +2148,194 @@ function startDepotClock() {
   setInterval(tick, 1000);
 }
 
+// ================= THEME ENGINE (LIGHT & DARK THEMES) =================
+function getCurrentTheme() {
+  return document.documentElement.getAttribute('data-theme') || (function() {
+    try {
+      return localStorage.getItem('korenevo_theme') || 'dark';
+    } catch (e) {
+      return 'dark';
+    }
+  })();
+}
+
+function setTheme(theme, showToastMsg = false) {
+  const t = (theme === 'light') ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  try {
+    localStorage.setItem('korenevo_theme', t);
+  } catch (e) {}
+
+  // Update toggle button UI in header
+  const toggleBtn = document.getElementById('theme-toggle-btn');
+  const toggleIcon = document.getElementById('theme-toggle-icon');
+  const toggleText = document.getElementById('theme-toggle-text');
+
+  if (t === 'light') {
+    if (toggleIcon) toggleIcon.className = 'fa-solid fa-moon text-indigo-600 text-sm';
+    if (toggleText) toggleText.textContent = 'Тёмная тема';
+    if (toggleBtn) toggleBtn.setAttribute('title', 'Переключить на тёмную тему');
+  } else {
+    if (toggleIcon) toggleIcon.className = 'fa-solid fa-sun text-amber-400 text-sm';
+    if (toggleText) toggleText.textContent = 'Светлая тема';
+    if (toggleBtn) toggleBtn.setAttribute('title', 'Переключить на светлую тему');
+  }
+
+  // Update Hero visual assets to match theme
+  const heroBusImg = document.getElementById('hero-bus-img');
+  const heroSlogan = document.getElementById('hero-slogan');
+  const heroCtaBtn = document.getElementById('hero-cta-btn');
+
+  if (heroBusImg) {
+    heroBusImg.src = (t === 'light') ? 'hero-bus-light.png' : 'hero-bus-dark.png';
+  }
+  if (heroSlogan) {
+    heroSlogan.textContent = (t === 'light') 
+      ? 'Комфортные поездки по родному городу' 
+      : 'Надёжные перевозки для нашего города';
+  }
+  if (heroCtaBtn) {
+    const btnSpan = heroCtaBtn.querySelector('span');
+    if (btnSpan) {
+      btnSpan.textContent = (t === 'light') ? 'Узнать больше' : 'Подробнее о предприятии';
+    }
+  }
+
+  updateNavTabsTheme();
+
+  if (showToastMsg && typeof showToast === 'function') {
+    showToast(t === 'light' ? 'Включена светлая тема оформления' : 'Включена тёмная тема оформления', 'info');
+  }
+}
+
+function toggleTheme() {
+  const current = getCurrentTheme();
+  const next = (current === 'light') ? 'dark' : 'light';
+  setTheme(next, true);
+}
+
+function initTheme() {
+  let saved = 'dark';
+  try {
+    saved = localStorage.getItem('korenevo_theme') || 'dark';
+  } catch (e) {}
+  setTheme(saved, false);
+}
+
+function updateNavTabsTheme() {
+  const tabs = ['home', 'reports', 'leaves', 'routes', 'announcements', 'chat'];
+  tabs.forEach(tab => {
+    const btn = document.getElementById(`tab-btn-${tab}`);
+    if (!btn) return;
+    if (tab === currentTab) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+}
+
+function handleProfileNavClick() {
+  if (currentUser) {
+    openEditProfileModal();
+  } else {
+    openModal('modal-login');
+  }
+}
+
+function openDepotAboutModal() {
+  openModal('modal-depot-about');
+}
+
+function updateHomeDashboardStats() {
+  const onlineEl = document.getElementById('home-online-drivers');
+  const reportsEl = document.getElementById('home-total-reports');
+  const revenueEl = document.getElementById('home-total-revenue');
+
+  if (onlineEl) {
+    const personnel = typeof getOnlinePersonnel === 'function' ? getOnlinePersonnel() : [];
+    onlineEl.textContent = personnel.length || 1;
+  }
+  if (reportsEl && typeof appReports !== 'undefined') {
+    reportsEl.textContent = (appReports || []).length;
+  }
+  if (revenueEl && typeof appReports !== 'undefined') {
+    const totalRev = (appReports || []).reduce((sum, r) => sum + (Number(r.revenue) || 0), 0);
+    revenueEl.textContent = `${totalRev.toLocaleString('ru-RU')} ₽`;
+  }
+}
+
+function renderAnnouncements() {
+  const liveTextEl = document.getElementById('announcement-live-text');
+  if (liveTextEl) {
+    let textVal = 'Уважаемые водители! На 104-м пригородном маршруте в районе с. Коренёво открыт отремонтированный объезд. Все путевые листы и отчёты о сменах сдавать строго через раздел «Отчеты».';
+    try {
+      textVal = localStorage.getItem('korenevo_ticker_text') || textVal;
+    } catch(e) {}
+    liveTextEl.textContent = textVal;
+  }
+}
+
+function openTickerEditPrompt() {
+  if (!currentUser || (currentUser.role !== 'director' && currentUser.role !== 'dispatch')) {
+    showToast('Редактирование сводки доступно только Диспетчеру и Руководителю', 'error');
+    return;
+  }
+  let currentMsg = 'Уважаемые водители! На 104-м пригородном маршруте в районе с. Коренёво открыт отремонтированный объезд. Все путевые листы и отчёты о сменах сдавать строго через раздел «Отчеты».';
+  try {
+    currentMsg = localStorage.getItem('korenevo_ticker_text') || currentMsg;
+  } catch(e) {}
+
+  const newMsg = prompt("Введите новый текст оперативной сводки депо (бегущей строки):", currentMsg);
+  if (newMsg !== null && newMsg.trim().length > 0) {
+    const textVal = newMsg.trim();
+    const now = Date.now();
+    try {
+      localStorage.setItem('korenevo_ticker_text', textVal);
+      localStorage.setItem('korenevo_ticker_updated_at', now);
+    } catch(e) {}
+
+    if (typeof loadTickerSettings === 'function') loadTickerSettings();
+    showToast("Сводка депо успешно обновлена и транслируется во всех терминалах!", "success");
+    renderAnnouncements();
+
+    const baseUrl = getFirebaseUrl();
+    if (baseUrl) {
+      const endpoint = baseUrl.endsWith('.json') ? baseUrl : `${baseUrl}/patp_db/ticker.json`;
+      fetch(endpoint, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: textVal,
+          release: 'Выпуск на линию: 100%',
+          fuel: 'Топливо: В норме',
+          updatedAt: now,
+          updatedBy: currentUser ? currentUser.name : 'Диспетчер'
+        })
+      }).catch(console.error);
+    }
+  }
+}
+
 // ================= TAB SWITCHING =================
 function switchTab(tabId) {
+  if (tabId === 'profile') {
+    handleProfileNavClick();
+    return;
+  }
+
   currentTab = tabId;
-  const tabs = ['reports', 'leaves', 'routes', 'chat'];
+  const tabs = ['home', 'reports', 'leaves', 'routes', 'announcements', 'chat'];
   tabs.forEach(tab => {
     const btn = document.getElementById(`tab-btn-${tab}`);
     const section = document.getElementById(`section-${tab}`);
 
     if (tab === tabId) {
       if (section) section.classList.remove('hidden');
-      if (btn) {
-        if (tab === 'reports') {
-          btn.className = "flex-1 py-3 px-2 sm:px-4 rounded-lg font-semibold text-xs sm:text-base flex items-center justify-center gap-1.5 sm:gap-2 transition duration-200 bg-sky-600/30 text-sky-200 border border-sky-500/30 shadow-inner whitespace-nowrap";
-        } else if (tab === 'leaves') {
-          btn.className = "flex-1 py-3 px-2 sm:px-4 rounded-lg font-semibold text-xs sm:text-base flex items-center justify-center gap-1.5 sm:gap-2 transition duration-200 bg-purple-600/30 text-purple-200 border border-purple-500/30 shadow-inner whitespace-nowrap";
-        } else if (tab === 'routes') {
-          btn.className = "flex-1 py-3 px-2 sm:px-4 rounded-lg font-semibold text-xs sm:text-base flex items-center justify-center gap-1.5 sm:gap-2 transition duration-200 bg-amber-600/30 text-amber-200 border border-amber-500/30 shadow-inner whitespace-nowrap";
-        } else if (tab === 'chat') {
-          btn.className = "flex-1 py-3 px-2 sm:px-4 rounded-lg font-semibold text-xs sm:text-base flex items-center justify-center gap-1.5 sm:gap-2 transition duration-200 bg-emerald-600/30 text-emerald-200 border border-emerald-500/30 shadow-inner whitespace-nowrap";
-        }
-      }
+      if (btn) btn.classList.add('active');
     } else {
       if (section) section.classList.add('hidden');
-      if (btn) {
-        btn.className = "flex-1 py-3 px-2 sm:px-4 rounded-lg font-semibold text-xs sm:text-base flex items-center justify-center gap-1.5 sm:gap-2 transition duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 whitespace-nowrap";
-      }
+      if (btn) btn.classList.remove('active');
     }
   });
 
@@ -2186,6 +2348,8 @@ function switchTab(tabId) {
     }
   }
 
+  if (tabId === 'home') updateHomeDashboardStats();
+  if (tabId === 'announcements') renderAnnouncements();
   if (tabId === 'reports') renderReports();
   if (tabId === 'leaves') renderLeaves();
   if (tabId === 'routes') renderRoutes();
@@ -4367,6 +4531,8 @@ function updateOnlineRoster() {
 
   const counterNumEl = document.getElementById('online-count-num');
   if (counterNumEl) counterNumEl.textContent = count;
+  const homeOnlineDriversEl = document.getElementById('home-online-drivers');
+  if (homeOnlineDriversEl) homeOnlineDriversEl.textContent = count;
 
   const chatOnlineCountEl = document.getElementById('chat-online-count');
   if (chatOnlineCountEl) chatOnlineCountEl.textContent = count;
@@ -4912,7 +5078,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   updateAuthUI();
   updateOnlineRoster();
   renderChat();
-  switchTab('reports');
+  initTheme();
+  switchTab('home');
   updateCloudStatusUI();
   startCloudSyncLoop();
   initPresenceEngine();
