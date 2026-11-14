@@ -151,44 +151,44 @@
   </div>
 
   <!-- MAIN WRAPPER -->
-  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-28 sm:pb-32">
 
     <!-- FORUM NAVIGATION TABS (Главная, Отчёты водителей, Заявки на отгулы, Наши маршруты, Объявления, Общий чат, Личный кабинет) -->
-    <nav class="nav-pill-track flex items-center space-x-1 sm:space-x-2 mb-6 p-1.5 rounded-2xl overflow-x-auto shadow-md">
-      <button id="tab-btn-home" onclick="switchTab('home')" class="nav-pill-btn active flex-1">
+    <nav class="nav-pill-track flex items-center space-x-1 sm:space-x-2 mb-6 p-1.5 rounded-2xl overflow-x-auto shadow-md no-scrollbar">
+      <button id="tab-btn-home" onclick="switchTab('home')" class="nav-pill-btn active flex-1 shrink-0">
         <i class="fa-solid fa-house"></i>
         <span>Главная</span>
       </button>
 
-      <button id="tab-btn-reports" onclick="switchTab('reports')" class="nav-pill-btn flex-1">
+      <button id="tab-btn-reports" onclick="switchTab('reports')" class="nav-pill-btn flex-1 shrink-0">
         <i class="fa-solid fa-clipboard-check"></i>
         <span>Отчёты водителей</span>
         <span id="badge-pending-reports-count" class="hidden ml-1 px-1.5 py-0.2 rounded-full text-xs bg-amber-500/30 text-amber-300 border border-amber-500/40">0</span>
       </button>
 
-      <button id="tab-btn-leaves" onclick="switchTab('leaves')" class="nav-pill-btn flex-1">
+      <button id="tab-btn-leaves" onclick="switchTab('leaves')" class="nav-pill-btn flex-1 shrink-0">
         <i class="fa-solid fa-calendar-days"></i>
         <span>Заявки на отгулы</span>
         <span id="badge-pending-leaves-count" class="hidden ml-1 px-1.5 py-0.2 rounded-full text-xs bg-purple-500/30 text-purple-300 border border-purple-500/40">0</span>
       </button>
 
-      <button id="tab-btn-routes" onclick="switchTab('routes')" class="nav-pill-btn flex-1">
+      <button id="tab-btn-routes" onclick="switchTab('routes')" class="nav-pill-btn flex-1 shrink-0">
         <i class="fa-solid fa-route"></i>
         <span>Наши маршруты</span>
       </button>
 
-      <button id="tab-btn-announcements" onclick="switchTab('announcements')" class="nav-pill-btn flex-1">
+      <button id="tab-btn-announcements" onclick="switchTab('announcements')" class="nav-pill-btn flex-1 shrink-0">
         <i class="fa-solid fa-bullhorn"></i>
         <span>Объявления</span>
       </button>
 
-      <button id="tab-btn-chat" onclick="switchTab('chat')" class="nav-pill-btn flex-1">
+      <button id="tab-btn-chat" onclick="switchTab('chat')" class="nav-pill-btn flex-1 shrink-0">
         <i class="fa-solid fa-comments"></i>
         <span>Общий чат</span>
         <span id="badge-chat-count" class="hidden ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-rose-600 text-white font-bold font-mono border border-rose-500/40 shadow-sm animate-pulse">0</span>
       </button>
 
-      <button id="tab-btn-profile" onclick="handleProfileNavClick()" class="nav-pill-btn flex-1">
+      <button id="tab-btn-profile" onclick="handleProfileNavClick()" class="nav-pill-btn flex-1 shrink-0">
         <i class="fa-solid fa-user"></i>
         <span>Личный кабинет</span>
       </button>
@@ -216,15 +216,15 @@
               Комфортные поездки по родному городу
             </p>
             
-            <div class="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-3">
+            <div class="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-3.5">
               <button onclick="openDepotAboutModal()" id="hero-cta-btn" class="hero-cta-btn px-6 py-3 rounded-full text-sm sm:text-base font-bold shadow-xl flex items-center gap-2.5 cursor-pointer">
                 <span>Узнать больше</span>
-                <i class="fa-solid fa-arrow-right"></i>
+                <i class="fa-solid fa-arrow-right text-xs"></i>
               </button>
               
-              <button onclick="switchTab('reports')" class="px-5 py-3 rounded-full border border-blue-500/30 font-semibold text-xs sm:text-sm hover:bg-blue-500/10 transition flex items-center gap-2 cursor-pointer">
-                <i class="fa-solid fa-plus-circle text-sky-400"></i>
-                <span>Сдать смену</span>
+              <button onclick="switchTab('reports')" id="hero-secondary-btn" class="hero-secondary-btn px-6 py-3 rounded-full text-sm sm:text-base font-bold flex items-center gap-2 cursor-pointer shadow-md">
+                <i class="fa-solid fa-circle-plus text-base"></i>
+                <span>Создать смену</span>
               </button>
             </div>
           </div>
@@ -1548,60 +1548,66 @@
     </div>
   </div>
 
-  <!-- TOAST NOTIFICATION CONTAINER -->
-  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
-
-  <!-- Main JavaScript App -->
-  <script src="app.js"></script>
-</body>
-</html><!-- MODAL: DEPOT ABOUT / ENTERPRISE GUIDE -->
+    <!-- MODAL: DEPOT ABOUT / ENTERPRISE GUIDE -->
   <div id="modal-depot-about" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-    <div class="patp-card w-full max-w-2xl rounded-2xl p-6 border border-sky-500/40 shadow-2xl relative max-h-[90vh] overflow-y-auto animate-scale-up">
-      <button onclick="closeModal('modal-depot-about')" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg cursor-pointer">
+    <div class="patp-card w-full max-w-2xl rounded-2xl p-6 border shadow-2xl relative max-h-[90vh] overflow-y-auto animate-scale-up">
+      <button onclick="closeModal('modal-depot-about')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-white text-lg cursor-pointer">
         <i class="fa-solid fa-xmark"></i>
       </button>
-      <div class="flex items-center gap-3 mb-4">
-        <div class="brand-bus-icon w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xl flex-shrink-0">
+      <div class="flex items-center gap-3.5 mb-5 pb-3 border-b border-slate-200 dark:border-sky-900/50">
+        <div class="brand-bus-icon w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-xl flex-shrink-0 shadow-md">
           <i class="fa-solid fa-bus"></i>
         </div>
         <div>
-          <h3 class="text-xl font-bold">ОАО «Коренёвский ПАТП»</h3>
-          <p class="text-xs text-slate-400">Виртуальное автотранспортное предприятие в OMSI 2</p>
+          <h3 class="text-xl font-black text-slate-900 dark:text-white">ОАО «Коренёвский ПАТП»</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Виртуальное автотранспортное предприятие в OMSI 2</p>
         </div>
       </div>
-      <div class="space-y-4 text-xs sm:text-sm text-slate-300 leading-relaxed">
+      <div class="space-y-4 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
         <p>
           ОАО «Коренёвский ПАТП» — современное пассажирское предприятие, обеспечивающее надёжные и комфортные автобусные перевозки по городским и пригородным направлениям в симуляторе OMSI 2.
         </p>
-        <div class="p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/25 space-y-1">
-          <div class="font-bold text-blue-400">Наш девиз:</div>
-          <div>«Для тех, кто ценит качество и комфорт»</div>
+        <div class="p-3.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-500/30 space-y-1">
+          <div class="font-bold text-blue-700 dark:text-blue-400">Наш девиз:</div>
+          <div class="text-slate-800 dark:text-slate-200 font-medium">«Для тех, кто ценит качество и комфорт»</div>
         </div>
         <div>
-          <h4 class="font-bold text-white mb-1.5 text-sm">Подвижной состав автопарка:</h4>
-          <ul class="list-disc list-inside space-y-1 text-slate-400">
-            <li><b>ЛиАЗ-5292.22 / 5292.65</b> — низкопольные городские автобусы большой вместимости</li>
-            <li><b>ЛиАЗ-5256.26</b> — классические пригородные и городские машины</li>
-            <li><b>НефАЗ-5299-40-52</b> — полунизкопольные городские дизельные автобусы</li>
-            <li><b>ПАЗ-32053 / «Вектор Next»</b> — надёжные автобусы малой и средней вместимости</li>
+          <h4 class="font-bold text-slate-900 dark:text-white mb-2 text-sm flex items-center gap-2">
+            <i class="fa-solid fa-bus-simple text-blue-600 dark:text-sky-400"></i>
+            <span>Подвижной состав автопарка:</span>
+          </h4>
+          <ul class="list-disc list-inside space-y-1.5 text-slate-600 dark:text-slate-300 ml-1">
+            <li><b class="text-slate-900 dark:text-white">ЛиАЗ-5292.22 / 5292.65</b> — низкопольные городские автобусы большой вместимости</li>
+            <li><b class="text-slate-900 dark:text-white">ЛиАЗ-5256.26</b> — классические пригородные и городские машины</li>
+            <li><b class="text-slate-900 dark:text-white">НефАЗ-5299-40-52</b> — полунизкопольные городские дизельные автобусы</li>
+            <li><b class="text-slate-900 dark:text-white">ПАЗ-32053 / «Вектор Next»</b> — надёжные автобусы малой и средней вместимости</li>
           </ul>
         </div>
         <div>
-          <h4 class="font-bold text-white mb-1.5 text-sm">Связь и диспетчеризация:</h4>
-          <p class="text-slate-400">
-            Связь с диспетчерской депо ведётся круглосуточно на частоте <b>144.200 МГц (Канал 1)</b> во встроенном общем чате сайта в режиме реального времени.
+          <h4 class="font-bold text-slate-900 dark:text-white mb-1.5 text-sm flex items-center gap-2">
+            <i class="fa-solid fa-walkie-talkie text-blue-600 dark:text-sky-400"></i>
+            <span>Связь и диспетчеризация:</span>
+          </h4>
+          <p class="text-slate-600 dark:text-slate-300">
+            Связь с диспетчерской депо ведётся круглосуточно на частоте <b class="text-slate-900 dark:text-white">144.200 МГц (Канал 1)</b> во встроенном общем чате сайта в режиме реального времени.
           </p>
         </div>
       </div>
-      <div class="mt-6 pt-4 border-t border-sky-900/40 flex flex-wrap justify-end gap-3">
-        <button onclick="closeModal('modal-depot-about'); switchTab('routes');" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs cursor-pointer">
+      <div class="mt-6 pt-4 border-t border-slate-200 dark:border-sky-900/40 flex flex-wrap justify-end gap-3">
+        <button onclick="closeModal('modal-depot-about'); switchTab('routes');" class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition cursor-pointer">
           <i class="fa-solid fa-route mr-1.5"></i> Посмотреть маршруты
         </button>
-        <button onclick="closeModal('modal-depot-about')" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs cursor-pointer">
+        <button onclick="closeModal('modal-depot-about')" class="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 font-semibold text-xs border border-slate-200 dark:border-slate-700 transition cursor-pointer">
           Закрыть
         </button>
       </div>
     </div>
   </div>
 
-  
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+  <!-- Main JavaScript App -->
+  <script src="app.js"></script>
+</body>
+</html>
